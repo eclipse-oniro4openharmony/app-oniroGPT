@@ -1,6 +1,19 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "certpath": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.cer",
+          "storePassword": "0000001BBDA04E4707313DBE774C696F2447BBF975D9F2AD6293DC909E343601FC84BBE94C6D25D46FED48",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B9D332309A75F4E59CD12C05688657C746E11A55885EDD9878A97A5E2DFB129E33E57A752141ABE",
+          "profile": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.p12"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
