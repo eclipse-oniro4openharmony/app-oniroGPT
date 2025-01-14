@@ -13,10 +13,8 @@ struct Index {
   @State modelList: Model[] = []
   @State selectedModel: string = 'gpt-3.5-turbo'
   @State messages: Message[] = []
-
   //Chat response data
   @State repliedChoices: Choice[] = []
-
 
   aboutToAppear(): void {
     const source = new chatDataSource()
@@ -35,16 +33,13 @@ struct Index {
         //强打印
         // console.log('Chat Response:', JSON.stringify(reply, null, 2));
 
-        this.repliedChoices = reply.choices
-
-//         console.log(`id: ${reply.id}
-//                     create time: ${reply.created}
-//                     choices: ${this.repliedChoices}
-// `)
-        this.repliedChoices.forEach((item: Choice)=>{
-          console.info(item.message.role)
-          console.info(item.message.content)
-        })
+        if (reply && reply.choices) {
+          this.repliedChoices = reply.choices;
+          this.repliedChoices.forEach((item: Choice) => {
+            console.info(item.message?.role || '无角色信息');
+            console.info(item.message?.content || '无内容信息');
+          })
+        }
 
       } else {
         this.isHttpError = true;
@@ -54,14 +49,13 @@ struct Index {
   }
 
   build() {
-    Row() {
+    Flex() {
       Column() {
         Text(this.message)
-          .fontSize(50)
-          .fontWeight(FontWeight.Bold)
       }
       .width('100%')
+      .height('100%')
     }
-    .height('100%')
+    .width('100%')
   }
 }
