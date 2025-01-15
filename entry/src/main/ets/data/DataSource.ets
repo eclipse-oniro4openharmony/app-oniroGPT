@@ -19,17 +19,11 @@ const authToken = "sk-wJc5pQkW0ZKz9gP1ITTSAxxNoH27Ri50lA4IaRFqL69KxOZs"
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
-const model: string = 'gpt-3.5-turbo'
+// const model: string = 'gpt-3.5-turbo'
 
 const contentType: string = 'application/json'
 
-const message: Message = new Message('user', 'Hello, can you summarize this document for me?')
 
-let messages: Message[] = []
-
-messages.push(message)
-
-const payload: Body = new Body(model, messages)
 
 
 class chatDataSource {
@@ -71,7 +65,7 @@ class chatDataSource {
     })
   }
 
-  async callChatApi(): Promise<ChatResponse> {
+  async callChatApi(payload: Body): Promise<ChatResponse> {
     return new Promise<ChatResponse>((resolve, reject) => {
       let httpRequest = http.createHttp()
       httpRequest.request(makeChat,
