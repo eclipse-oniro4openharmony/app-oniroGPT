@@ -22,7 +22,7 @@
         "srcEntry": "./ets/entryability/EntryAbility.ets",
         "description": "$string:EntryAbility_desc",
         "icon": "$media:icon",
-        "label": "$string:EntryAbility_label",
+        "label": "$string:appName",
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,

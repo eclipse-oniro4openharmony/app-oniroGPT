@@ -5,9 +5,9 @@
         "name": "default",
         "material": {
           "certpath": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.cer",
-          "storePassword": "0000001BBDA04E4707313DBE774C696F2447BBF975D9F2AD6293DC909E343601FC84BBE94C6D25D46FED48",
+          "storePassword": "0000001BE09EB526284D9F782C48D87489C9627111B688DE3A209EEA1AB34A17B3300F3C9F69478478F2BB",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B9D332309A75F4E59CD12C05688657C746E11A55885EDD9878A97A5E2DFB129E33E57A752141ABE",
+          "keyPassword": "0000001BBE2D28D1F1FFA857FBED46E69E6314FDA7F6D65EAA589B9A4FE7AAC2580CBFC7464705AA508FF9",
           "profile": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:/Users/c84381641/.ohos/config/openharmony/default_app-ChatGPT_MbgGoudfPVSofvE9FLivZFyYiC2R6QYYAKNcRyvK1rQ=.p12"

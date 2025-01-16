@@ -126,12 +126,11 @@ struct Index {
 
   // builder
   @Builder
-  iconComponent(icon: Resource, callback?: ()=> void){
+  iconComponent(icon: Resource, callback?: () => void) {
     Image(icon)
       .iconStyle()
       .onClick(callback)
   }
-
 
   build() {
     Flex() {
@@ -179,36 +178,56 @@ struct Index {
         .layoutWeight(1)
 
         Column() {
-          TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
-            .type(TextAreaType.NORMAL)
-            .onChange((content: string) => {
-              this.newMessageContent = content
-              console.log(this.newMessageContent)
-            })
-            .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
-            .onSubmit((enterKey: EnterKeyType) => {
-              if (enterKey == EnterKeyType.Send) {
+          Row({space: 20}) {
+            TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
+              .type(TextAreaType.NORMAL)
+              .onChange((content: string) => {
+                this.newMessageContent = content
+                console.log(this.newMessageContent)
+              })
+              .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
+              .onSubmit((enterKey: EnterKeyType) => {
+                if (enterKey == EnterKeyType.Send) {
+                  this.isWelcomeStatus = false
+                  //Upload current message
+                  this.newMessage = new Message(this.role, this.newMessageContent)
+                  this.newMessageContent = ''
+                  this.messages.push(this.newMessage)
+                  this.callChatMethod(this.payload)
+                }
+              })
+              .width('80%')
+            Button('Send')
+              .type(ButtonType.Normal)
+              .borderRadius(3)
+              .onClick(()=>{
                 this.isWelcomeStatus = false
                 //Upload current message
                 this.newMessage = new Message(this.role, this.newMessageContent)
                 this.newMessageContent = ''
                 this.messages.push(this.newMessage)
                 this.callChatMethod(this.payload)
-              }
-            })
+              })
+          }
+          .width('100%')
+
           // Row of many functional labels
           // todo: Implement onClick methods of each icon
-          Row({space: 10}){
-            this.iconComponent($r('app.media.icon_add'),()=>{})
-            this.iconComponent($r('app.media.icon_record'),()=>{})
-            this.iconComponent($r('app.media.icon_earth'),()=>{})
+          Row({ space: 10 }) {
+            this.iconComponent($r('app.media.icon_add'), () => {
+            })
+            this.iconComponent($r('app.media.icon_record'), () => {
+            })
+            this.iconComponent($r('app.media.icon_earth'), () => {
+            })
             Blank()
               .layoutWeight(1)
-            this.iconComponent($r('app.media.icon_conversation'),()=>{})
+            this.iconComponent($r('app.media.icon_conversation'), () => {
+            })
           }
         }
         .width('100%')
-        .height('10%')
+        .height(80)
         .borderRadius(10)
         .borderWidth(1)
         .padding(5)
