@@ -1,29 +1,21 @@
 import http from '@ohos.net.http';
 import { BusinessError } from '@ohos.base';
-import {
-  ChatBodyParams,
-  DataResponse,
-  HeaderForModel,
-  Message,
-  Model,
-  Body,
-} from '../models/models';
+import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 
-const BASE_URL = "https://api.chatanywhere.org"
+const BASE_URL = "https://api.openai.com"
 
 const getModel = BASE_URL + "/v1/models"
 
 //Replace the token if necessary
-const authToken = "sk-wJc5pQkW0ZKz9gP1ITTSAxxNoH27Ri50lA4IaRFqL69KxOZs"
+// todo: to be replaced
+const authToken = ""
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
 // const model: string = 'gpt-3.5-turbo'
 
 const contentType: string = 'application/json'
-
-
 
 
 class chatDataSource {
@@ -101,7 +93,15 @@ class chatDataSource {
     try {
       let httpRequest = http.createHttp();
       const response = await new Promise<number>((resolve, reject) => {
-        httpRequest.request(BASE_URL, (err: Error, data: http.HttpResponse) => {
+        httpRequest.request("https://api.openai.com/v1/models",
+          {
+            method: http.RequestMethod.GET,
+            header: new HeaderForModel(authToken),
+            expectDataType: http.HttpDataType.STRING,
+            readTimeout: 30000,
+            connectTimeout: 30000,
+          },
+          (err: Error, data: http.HttpResponse) => {
           if (!err) {
             resolve(data.responseCode);
           } else {
