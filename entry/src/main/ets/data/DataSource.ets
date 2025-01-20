@@ -3,13 +3,13 @@ import { BusinessError } from '@ohos.base';
 import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 
-const BASE_URL = "https://api.openai.com"
+const BASE_URL = "https://api.chatanywhere.tech"
 
 const getModel = BASE_URL + "/v1/models"
 
 //Replace the token if necessary
 // todo: to be replaced
-const authToken = ""
+const authToken = "You token"
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
@@ -93,7 +93,7 @@ class chatDataSource {
     try {
       let httpRequest = http.createHttp();
       const response = await new Promise<number>((resolve, reject) => {
-        httpRequest.request("https://api.openai.com/v1/models",
+        httpRequest.request(BASE_URL,
           {
             method: http.RequestMethod.GET,
             header: new HeaderForModel(authToken),

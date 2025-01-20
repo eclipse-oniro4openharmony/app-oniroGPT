@@ -59,12 +59,12 @@ struct Index {
           this.selectList.push(new SelectModel(item.id, $r("app.media.icon")))
         })
 
-        // const reply: ChatResponse = await source.callChatApi().catch(
+        // const reply: ChatResponse = await source.callChatApi(this.payload).catch(
         //   (err: BusinessError) => {
         //     console.error('Error during callChatApi:', err)
         //   }
         // ) as ChatResponse
-        //强打印
+        // // 强打印
         // console.log('Chat Response:', JSON.stringify(reply, null, 2));
 
         // if (reply && reply.choices) {
@@ -167,9 +167,34 @@ struct Index {
               ForEach(this.messages, (item: Message) => {
                 ListItem() {
                   Row({ space: 20 }) {
-                    Text(item.role)
-                    Text(item.content)
+                    if (item.role == 'user') {
+                      Row() {
+                        Row() {
+                          Text(item.content)
+                            .margin(10)
+                        }
+                        .borderRadius(10)
+                        .borderWidth(1)
+                        .margin(10)
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.End)
+                    } else {
+                      Row() {
+                        Row() {
+                          Text(item.content)
+                            .margin(10)
+                        }
+                        .borderRadius(10)
+                        .borderWidth(1)
+                        .margin(10)
+                        .backgroundColor(Color.Orange)
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.Start)
+                    }
                   }
+                  .width('100%')
                 }
               })
             }
@@ -178,7 +203,7 @@ struct Index {
         .layoutWeight(1)
 
         Column() {
-          Row({space: 20}) {
+          Row({ space: 20 }) {
             TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
               .type(TextAreaType.NORMAL)
               .onChange((content: string) => {
@@ -200,7 +225,7 @@ struct Index {
             Button('Send')
               .type(ButtonType.Normal)
               .borderRadius(3)
-              .onClick(()=>{
+              .onClick(() => {
                 this.isWelcomeStatus = false
                 //Upload current message
                 this.newMessage = new Message(this.role, this.newMessageContent)
