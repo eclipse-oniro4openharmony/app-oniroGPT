@@ -2,20 +2,23 @@ import http from '@ohos.net.http';
 import { BusinessError } from '@ohos.base';
 import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
+import { CreateImageBodyParams, CreateImageResponse, HeaderForImage } from '../models/image';
 
-const BASE_URL = "https://api.chatanywhere.tech"
+const BASE_URL = "https://api.openai.com"
 
 const getModel = BASE_URL + "/v1/models"
 
 //Replace the token if necessary
 // todo: to be replaced
-const authToken = "You token"
+const authToken = "you token"
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
+const createImage = BASE_URL +"/v1/images/generations"
 // const model: string = 'gpt-3.5-turbo'
 
 const contentType: string = 'application/json'
+
 
 
 class chatDataSource {
@@ -93,7 +96,7 @@ class chatDataSource {
     try {
       let httpRequest = http.createHttp();
       const response = await new Promise<number>((resolve, reject) => {
-        httpRequest.request(BASE_URL,
+        httpRequest.request(getModel,
           {
             method: http.RequestMethod.GET,
             header: new HeaderForModel(authToken),
@@ -115,6 +118,39 @@ class chatDataSource {
       return -1;
     }
   }
+
+  async createImage(payload: CreateImageBodyParams): Promise<CreateImageResponse> {
+    return new Promise<CreateImageResponse>((resolve, reject) => {
+      let httpRequest = http.createHttp()
+      httpRequest.request(createImage,
+        {
+          method: http.RequestMethod.POST,
+          header: new HeaderForImage(authToken, contentType),
+          extraData: JSON.stringify(payload),
+          expectDataType: http.HttpDataType.STRING,
+          readTimeout: 30000,
+          connectTimeout: 30000
+        },
+
+        (err: Error, data: http.HttpResponse) => {
+          if (!err) {
+            try {
+              let responseData: CreateImageResponse = JSON.parse(data.result as string)
+              resolve(responseData)
+            } catch (error) {
+              reject('Failed to parse response data')
+            }
+            finally {
+              httpRequest.off('headersReceive')
+              httpRequest.destroy()
+            }
+          } else {
+            reject('Error: ' + err)
+          }
+        })
+    })
+  }
+
 }
 
 

@@ -3,6 +3,7 @@ import { Body, ChatBodyParams, DataResponse, HeaderForModel, Message, Model } fr
 import { BusinessError, Callback } from '@ohos.base';
 import { ChatResponse, Choice } from '../models/chat';
 import { SelectModel } from '../models/index'
+import { CreateImageBodyParams, CreateImageResponse } from '../models/image';
 
 @Entry
 @Component
@@ -24,6 +25,8 @@ struct Index {
   private role: string = 'user'
   @State newMessage: Message = new Message('', '')
   @State payload: Body = new Body(this.selectedModel, this.messages)
+  @State createImageBody: CreateImageBodyParams = new CreateImageBodyParams('dall-e-3', 'A colorful sunset over the mountains',
+    1, '1024x1024')
   @State repliedMessage: Message = new Message('assistant', '')
   //Initial app page status
   @State isWelcomeStatus: boolean = true
@@ -31,7 +34,10 @@ struct Index {
   @State displayedText: string = ''
   private welcomeText: string = 'How can I help you today?'
   private index: number = 0 //Current text index
-
+  //Image
+  @State isCreateImageLoading: boolean = false
+  @State displayImageGenerateText: string = ''
+  private imageGenerateText: string = 'Image generating...'
   // const message: Message = new Message('user', 'Hello, can you summarize this document for me?')
   //
   // let messages: Message[] = []
@@ -114,11 +120,51 @@ struct Index {
     })
   }
 
+  callCreateImage(payload: CreateImageBodyParams) {
+    const source = new chatDataSource()
+
+    source.fetchHttpCode().then(async (code) => {
+      this.httpCode = code
+
+      if (code === 200) {
+        this.isCreateImageLoading = true
+
+        const reply: CreateImageResponse = await source.createImage(payload).catch(
+          (err: BusinessError) => {
+            console.error('Error during callChatApi:', err)
+          }
+        ) as CreateImageResponse
+        // console.info('inside 200')
+        // console.info(JSON.stringify(reply, null, 2))
+        if (reply) {
+          this.isCreateImageLoading = false
+          console.info('time', reply.created.toString())
+          reply.data.forEach((item) => {
+            console.info('imageUrl', item.url)
+          })
+        }
+      } else {
+        this.isHttpError = true;
+        console.error('Failed to fetch data: HTTP Code', code);
+      }
+    })
+  }
+
   //methods about typing welcome page text
   startTypingEffect() {
     setInterval(() => {
       if (this.index < this.welcomeText.length) {
         this.displayedText += this.welcomeText[this.index];
+        this.index++;
+      }
+    }, 50)
+  }
+
+  //methods about typing welcome page text
+  startImageGenerateEffect() {
+    setInterval(() => {
+      if (this.index < this.imageGenerateText.length-3) {
+        this.displayImageGenerateText += this.imageGenerateText[this.index];
         this.index++;
       }
     }, 50)
@@ -240,11 +286,14 @@ struct Index {
           // todo: Implement onClick methods of each icon
           Row({ space: 10 }) {
             this.iconComponent($r('app.media.icon_add'), () => {
+              this.startImageGenerateEffect()
+              this.callCreateImage(this.createImageBody)
             })
             this.iconComponent($r('app.media.icon_record'), () => {
             })
             this.iconComponent($r('app.media.icon_earth'), () => {
             })
+            Text(`Image:${this.isCreateImageLoading}`)
             Blank()
               .layoutWeight(1)
             this.iconComponent($r('app.media.icon_conversation'), () => {
