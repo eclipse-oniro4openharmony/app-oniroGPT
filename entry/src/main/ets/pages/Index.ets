@@ -38,6 +38,8 @@ struct Index {
   @State isCreateImageLoading: boolean = false
   @State displayImageGenerateText: string = ''
   private imageGenerateText: string = 'Image generating...'
+  private createImageTextIndex: number = 0
+  @State imageList: string[] = []
   // const message: Message = new Message('user', 'Hello, can you summarize this document for me?')
   //
   // let messages: Message[] = []
@@ -141,6 +143,7 @@ struct Index {
           console.info('time', reply.created.toString())
           reply.data.forEach((item) => {
             console.info('imageUrl', item.url)
+            this.imageList.push(item.url)
           })
         }
       } else {
@@ -162,10 +165,11 @@ struct Index {
 
   //methods about typing welcome page text
   startImageGenerateEffect() {
+    this.displayImageGenerateText = ''
     setInterval(() => {
-      if (this.index < this.imageGenerateText.length-3) {
-        this.displayImageGenerateText += this.imageGenerateText[this.index];
-        this.index++;
+      if (this.createImageTextIndex < this.imageGenerateText.length) {
+        this.displayImageGenerateText += this.imageGenerateText[this.createImageTextIndex];
+        this.createImageTextIndex++;
       }
     }, 50)
   }
@@ -209,40 +213,58 @@ struct Index {
             .height('100%')
             .justifyContent(FlexAlign.Center)
           } else {
-            List() {
-              ForEach(this.messages, (item: Message) => {
-                ListItem() {
-                  Row({ space: 20 }) {
-                    if (item.role == 'user') {
-                      Row() {
+            if (this.isCreateImageLoading) {
+              Column() {
+                Text(this.displayImageGenerateText)
+                  .fontWeight(600)
+                  .fontSize(24)
+              }
+              .width('100%')
+              .height('100%')
+              .justifyContent(FlexAlign.Center)
+            } else {
+              List() {
+                ForEach(this.messages, (item: Message) => {
+                  ListItem() {
+                    Row({ space: 20 }) {
+                      if (item.role == 'user') {
                         Row() {
-                          Text(item.content)
-                            .margin(10)
+                          Row() {
+                            Text(item.content)
+                              .margin(10)
+                          }
+                          .borderRadius(10)
+                          .borderWidth(1)
+                          .margin(10)
                         }
-                        .borderRadius(10)
-                        .borderWidth(1)
-                        .margin(10)
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.End)
-                    } else {
-                      Row() {
+                        .width('100%')
+                        .justifyContent(FlexAlign.End)
+                      } else {
                         Row() {
-                          Text(item.content)
-                            .margin(10)
+                          Row() {
+                            Text(item.content)
+                              .margin(10)
+                          }
+                          .borderRadius(10)
+                          .borderWidth(1)
+                          .margin(10)
+                          .backgroundColor(Color.Orange)
                         }
-                        .borderRadius(10)
-                        .borderWidth(1)
-                        .margin(10)
-                        .backgroundColor(Color.Orange)
+                        .width('100%')
+                        .justifyContent(FlexAlign.Start)
                       }
-                      .width('100%')
-                      .justifyContent(FlexAlign.Start)
                     }
+                    .width('100%')
                   }
-                  .width('100%')
-                }
-              })
+                })
+              }
+              List(){
+                ForEach(this.imageList,(item:string)=>{
+                  ListItem(){
+                    Image(item)
+                  }
+                })
+              }
             }
           }
         }.width('100%')
@@ -286,6 +308,8 @@ struct Index {
           // todo: Implement onClick methods of each icon
           Row({ space: 10 }) {
             this.iconComponent($r('app.media.icon_add'), () => {
+              this.isWelcomeStatus = false
+              this.createImageTextIndex = 0
               this.startImageGenerateEffect()
               this.callCreateImage(this.createImageBody)
             })

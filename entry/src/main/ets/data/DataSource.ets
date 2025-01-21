@@ -10,7 +10,7 @@ const getModel = BASE_URL + "/v1/models"
 
 //Replace the token if necessary
 // todo: to be replaced
-const authToken = "you token"
+const authToken = "your token"
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
