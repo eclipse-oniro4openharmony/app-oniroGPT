@@ -1,3 +1,5 @@
+// Image Generation
+
 class HeaderForImage {
   Authorization: string
   ContentType: string
@@ -46,5 +48,10 @@ interface Image {
   url: string
   revised_prompt: string
 }
+
+// Image Edit
+
+
+// Image Variations
 
 export { HeaderForImage, CreateImageBodyParams, CreateImageResponse }

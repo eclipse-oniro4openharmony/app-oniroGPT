@@ -3,7 +3,6 @@ import { BusinessError } from '@ohos.base';
 import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, HeaderForImage } from '../models/image';
-
 const BASE_URL = "https://api.openai.com"
 
 const getModel = BASE_URL + "/v1/models"
@@ -150,6 +149,39 @@ class chatDataSource {
         })
     })
   }
+
+  async editImage(payload: CreateImageBodyParams): Promise<CreateImageResponse> {
+    return new Promise<CreateImageResponse>((resolve, reject) => {
+      let httpRequest = http.createHttp()
+      httpRequest.request(createImage,
+        {
+          method: http.RequestMethod.POST,
+          header: new HeaderForImage(authToken, contentType),
+          extraData: JSON.stringify(payload),
+          expectDataType: http.HttpDataType.STRING,
+          readTimeout: 30000,
+          connectTimeout: 30000
+        },
+
+        (err: Error, data: http.HttpResponse) => {
+          if (!err) {
+            try {
+              let responseData: CreateImageResponse = JSON.parse(data.result as string)
+              resolve(responseData)
+            } catch (error) {
+              reject('Failed to parse response data')
+            }
+            finally {
+              httpRequest.off('headersReceive')
+              httpRequest.destroy()
+            }
+          } else {
+            reject('Error: ' + err)
+          }
+        })
+    })
+  }
+
 
 }
 

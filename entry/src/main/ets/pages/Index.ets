@@ -40,6 +40,10 @@ struct Index {
   private imageGenerateText: string = 'Image generating...'
   private createImageTextIndex: number = 0
   @State imageList: string[] = []
+  @State isImageIconClick: boolean = false
+  @State imageGenerateDescription: string = ''
+  private imageGenerateGuide: string = 'Please describe your image'
+
   // const message: Message = new Message('user', 'Hello, can you summarize this document for me?')
   //
   // let messages: Message[] = []
@@ -144,7 +148,9 @@ struct Index {
           reply.data.forEach((item) => {
             console.info('imageUrl', item.url)
             this.imageList.push(item.url)
+            this.createImageBody.prompt = ''
           })
+          this.isImageIconClick = false
         }
       } else {
         this.isHttpError = true;
@@ -213,9 +219,9 @@ struct Index {
             .height('100%')
             .justifyContent(FlexAlign.Center)
           } else {
-            if (this.isCreateImageLoading) {
+            if (this.isImageIconClick) {
               Column() {
-                Text(this.displayImageGenerateText)
+                Text(`${this.isCreateImageLoading == true ? this.imageGenerateText : this.imageGenerateGuide}`)
                   .fontWeight(600)
                   .fontSize(24)
               }
@@ -258,10 +264,16 @@ struct Index {
                   }
                 })
               }
-              List(){
-                ForEach(this.imageList,(item:string)=>{
-                  ListItem(){
-                    Image(item)
+
+              List() {
+                ForEach(this.imageList, (item: string) => {
+                  ListItem() {
+                    Row() {
+                      Image(item)
+                        .width('50%')
+                    }
+                    .width('100%')
+                    .justifyContent(FlexAlign.Start)
                   }
                 })
               }
@@ -270,17 +282,50 @@ struct Index {
         }.width('100%')
         .layoutWeight(1)
 
+        // todo: Require guide for image generation
+        // if (this.isImageIconClick) {
+        //   Text('Please describe your image')
+        // }
         Column() {
           Row({ space: 20 }) {
             TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
               .type(TextAreaType.NORMAL)
               .onChange((content: string) => {
-                this.newMessageContent = content
-                console.log(this.newMessageContent)
+                if (this.isImageIconClick) {
+                  this.imageGenerateDescription = content
+                } else {
+                  this.newMessageContent = content
+                  console.log(this.newMessageContent)
+                }
               })
               .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
               .onSubmit((enterKey: EnterKeyType) => {
                 if (enterKey == EnterKeyType.Send) {
+                  this.isWelcomeStatus = false
+                  //Upload current message
+                  if (this.isImageIconClick) {
+                    this.createImageBody.prompt = this.imageGenerateDescription
+                    this.startImageGenerateEffect()
+                    this.callCreateImage(this.createImageBody)
+                  }
+                  else {
+                    this.newMessage = new Message(this.role, this.newMessageContent)
+                    this.newMessageContent = ''
+                    this.messages.push(this.newMessage)
+                    this.callChatMethod(this.payload)
+                  }
+                }
+              })
+              .width('80%')
+            Button('Send')
+              .type(ButtonType.Normal)
+              .borderRadius(3)
+              .onClick(() => {
+                if (this.isImageIconClick) {
+                  this.createImageBody.prompt = this.imageGenerateDescription
+                  this.startImageGenerateEffect()
+                  this.callCreateImage(this.createImageBody)
+                } else {
                   this.isWelcomeStatus = false
                   //Upload current message
                   this.newMessage = new Message(this.role, this.newMessageContent)
@@ -289,29 +334,17 @@ struct Index {
                   this.callChatMethod(this.payload)
                 }
               })
-              .width('80%')
-            Button('Send')
-              .type(ButtonType.Normal)
-              .borderRadius(3)
-              .onClick(() => {
-                this.isWelcomeStatus = false
-                //Upload current message
-                this.newMessage = new Message(this.role, this.newMessageContent)
-                this.newMessageContent = ''
-                this.messages.push(this.newMessage)
-                this.callChatMethod(this.payload)
-              })
           }
           .width('100%')
 
           // Row of many functional labels
           // todo: Implement onClick methods of each icon
           Row({ space: 10 }) {
-            this.iconComponent($r('app.media.icon_add'), () => {
+            this.iconComponent($r('app.media.icon_image'), () => {
               this.isWelcomeStatus = false
+              this.isImageIconClick = !this.isImageIconClick
               this.createImageTextIndex = 0
-              this.startImageGenerateEffect()
-              this.callCreateImage(this.createImageBody)
+
             })
             this.iconComponent($r('app.media.icon_record'), () => {
             })
