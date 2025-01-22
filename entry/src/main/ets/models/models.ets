@@ -33,13 +33,31 @@ class HeaderForModel {
   }
 }
 
+class ImageUrl {
+  url: string = ''
+}
 
+class ImageContent {
+  type: string = 'image_url'
+  image_url: ImageUrl = new ImageUrl()
+
+  constructor(url: string) {
+    this.image_url.url = url
+  }
+}
+
+class TextContent {
+  type: string = 'text'
+  text: string = ''
+}
+
+type Content = TextContent | ImageContent
 
 class Message {
   role: string
-  content: string
+  content: Content[]
 
-  constructor(role: string, content: string) {
+  constructor(role: string, content: Content[]) {
     this.role = role
     this.content = content
   }
@@ -70,10 +88,4 @@ class Body {
 }
 
 export {
-  HeaderForModel,
-  DataResponse,
-  Model,
-  ChatBodyParams,
-  Body,
-  Message,
-}
+  HeaderForModel, DataResponse, Model, ChatBodyParams, Body, Message, Content, ImageContent, TextContent }

@@ -1,5 +1,16 @@
 import { chatDataSource } from '../data/DataSource'
-import { Body, ChatBodyParams, DataResponse, HeaderForModel, Message, Model } from '../models/models';
+import { convertToBase64 } from '../utils/ImageUtils'
+import {
+  Content,
+  Body,
+  ChatBodyParams,
+  DataResponse,
+  HeaderForModel,
+  Message,
+  Model,
+  TextContent,
+  ImageContent
+} from '../models/models';
 import { BusinessError, Callback } from '@ohos.base';
 import { ChatResponse, Choice } from '../models/chat';
 import { SelectModel } from '../models/index'
@@ -9,7 +20,6 @@ import { MediaHelper } from '../helper/MediaHelper';
 import common from '@ohos.app.ability.common';
 import { Log } from '../utils/Log';
 import file from '@ohos.file.fs'; //用于读取普通文件
-
 
 class ImageType {
   type: string
@@ -36,12 +46,17 @@ struct Index {
   private textAreaController: TextAreaController = new TextAreaController()
   @State newMessageContent: string = ''
   @State newReplyContent: string = ''
+  @State currentContent: Content[] = []
+  @State currentTextContent: TextContent = new TextContent()
+  // todo: Image required to be `Base64 encoded` data, can't be url
+
+  @State currentImageContent: ImageContent = new ImageContent('file://media/Photo/5/IMG_1737541853_004/IMG_2025122_182913.jpg')
   private role: string = 'user'
-  @State newMessage: Message = new Message('', '')
+  @State newMessage: Message = new Message('', [])
   @State payload: Body = new Body(this.selectedModel, this.messages)
   @State createImageBody: CreateImageBodyParams = new CreateImageBodyParams('dall-e-3', 'A colorful sunset over the mountains',
     1, '1024x1024')
-  @State repliedMessage: Message = new Message('assistant', '')
+  @State repliedMessage: Message = new Message('assistant', [])
   //Initial app page status
   @State isWelcomeStatus: boolean = true
   //Dynamic layout text
@@ -66,7 +81,6 @@ struct Index {
 
   // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
   aboutToAppear(): void {
-
     this.startTypingEffect()
 
     const source = new chatDataSource()
@@ -121,15 +135,15 @@ struct Index {
             console.error('Error during callChatApi:', err)
           }
         ) as ChatResponse
-
+        console.info('callChatResponse', JSON.stringify(reply, null, 2))
         if (reply && reply.choices) {
           this.repliedChoices = reply.choices;
           this.repliedChoices.forEach((item: Choice) => {
             console.info(item.message?.role || 'No role information');
-            console.info(item.message?.content || 'No message content');
+            // console.info(item.message?.content || 'No message content');
 
-            this.newReplyContent = item.message?.content || 'No role information'
-            this.messages.push(new Message('assistant', this.newReplyContent))
+            this.currentContent = item.message?.content || []
+            this.messages.push(new Message('assistant', this.currentContent))
           })
         }
       } else {
@@ -200,6 +214,7 @@ struct Index {
       }
     })
   }
+
   async urlToFile(filePath: string) {
     let f = await file.open(filePath);
     let editPayload: EditImageBodyParams = new EditImageBodyParams(f, 'Modify it')
@@ -283,7 +298,7 @@ struct Index {
                       if (item.role == 'user') {
                         Row() {
                           Row() {
-                            Text(item.content)
+                            Text((item.content[item.content.length-1] as TextContent).text)
                               .margin(10)
                           }
                           .borderRadius(10)
@@ -295,7 +310,7 @@ struct Index {
                       } else {
                         Row() {
                           Row() {
-                            Text(item.content)
+                            Text((item.content[item.content.length-1] as TextContent).text)
                               .margin(10)
                           }
                           .borderRadius(10)
@@ -356,9 +371,18 @@ struct Index {
                     this.callCreateImage(this.createImageBody)
                   }
                   else {
-                    this.newMessage = new Message(this.role, this.newMessageContent)
+                    this.currentTextContent.text = this.newMessageContent
+                    this.currentContent.push(this.currentTextContent)
+                    if (this.currentImageContent.image_url) {
+                      this.currentContent.push(this.currentImageContent)
+                    }
+                    console.info('currentTextContent', this.currentTextContent.text, 'newMsg', this.newMessageContent)
+                    this.newMessage = new Message(this.role, this.currentContent)
                     this.newMessageContent = ''
                     this.messages.push(this.newMessage)
+                    this.payload.messages.forEach((item) => {
+                      console.info('payload', JSON.stringify(item.content, null, 2))
+                    })
                     this.callChatMethod(this.payload)
                   }
                 }
@@ -375,7 +399,12 @@ struct Index {
                 } else {
                   this.isWelcomeStatus = false
                   //Upload current message
-                  this.newMessage = new Message(this.role, this.newMessageContent)
+                  this.currentTextContent.text = this.newMessageContent
+                  this.currentContent.push(this.currentTextContent)
+                  if (this.currentImageContent.image_url) {
+                    this.currentContent.push(this.currentImageContent)
+                  }
+                  this.newMessage = new Message(this.role, this.currentContent)
                   this.newMessageContent = ''
                   this.messages.push(this.newMessage)
                   this.callChatMethod(this.payload)
