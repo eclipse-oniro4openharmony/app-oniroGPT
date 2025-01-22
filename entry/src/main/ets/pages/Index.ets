@@ -3,7 +3,21 @@ import { Body, ChatBodyParams, DataResponse, HeaderForModel, Message, Model } fr
 import { BusinessError, Callback } from '@ohos.base';
 import { ChatResponse, Choice } from '../models/chat';
 import { SelectModel } from '../models/index'
-import { CreateImageBodyParams, CreateImageResponse } from '../models/image';
+import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams } from '../models/image';
+import { MediaBean } from '../bean/MediaBean';
+import { MediaHelper } from '../helper/MediaHelper';
+import common from '@ohos.app.ability.common';
+import { Log } from '../utils/Log';
+import file from '@ohos.file.fs'; //用于读取普通文件
+
+
+class ImageType {
+  type: string
+
+  constructor() {
+    this.type = 'image/png'
+  }
+}
 
 @Entry
 @Component
@@ -43,15 +57,12 @@ struct Index {
   @State isImageIconClick: boolean = false
   @State imageGenerateDescription: string = ''
   private imageGenerateGuide: string = 'Please describe your image'
-
-  // const message: Message = new Message('user', 'Hello, can you summarize this document for me?')
-  //
-  // let messages: Message[] = []
-  //
-  // messages.push(message)
-  //
-  // const payload: Body = new Body(model, messages)
-
+  // Media
+  private mediaHelper: MediaHelper = new MediaHelper(getContext());
+  @State mediaBean: MediaBean = new MediaBean();
+  //edit image
+  @State isImageSelected: boolean = false
+  @State selectedFileUrl: string = 'file://media/Photo/5/IMG_1737541853_004/IMG_2025122_182913.jpg'
 
   // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
   aboutToAppear(): void {
@@ -70,29 +81,31 @@ struct Index {
         this.modelList.forEach((item: Model) => {
           this.selectList.push(new SelectModel(item.id, $r("app.media.icon")))
         })
-
-        // const reply: ChatResponse = await source.callChatApi(this.payload).catch(
-        //   (err: BusinessError) => {
-        //     console.error('Error during callChatApi:', err)
-        //   }
-        // ) as ChatResponse
-        // // 强打印
-        // console.log('Chat Response:', JSON.stringify(reply, null, 2));
-
-        // if (reply && reply.choices) {
-        //   this.repliedChoices = reply.choices;
-        //   this.repliedChoices.forEach((item: Choice) => {
-        //     console.info(item.message?.role || '无角色信息');
-        //     console.info(item.message?.content || '无内容信息');
-        //   })
-        // }
-
-
       } else {
         this.isHttpError = true;
         console.error('Failed to fetch data: HTTP Code', code);
       }
     })
+  }
+
+  async handleClick(option: MediaOption) {
+    let mediaBean!: MediaBean;
+    switch (option) {
+      case MediaOption.Picture:
+        mediaBean = await this.mediaHelper.selectPicture();
+        break;
+      case MediaOption.File:
+        mediaBean = await this.mediaHelper.selectFile();
+        break;
+      case MediaOption.TakePhoto:
+        mediaBean = await this.mediaHelper.takePhoto(getContext() as common.UIAbilityContext);
+        break;
+      default:
+        break;
+    }
+    if (mediaBean) {
+      this.mediaBean = mediaBean;
+    }
   }
 
   callChatMethod(payload: Body) {
@@ -140,8 +153,6 @@ struct Index {
             console.error('Error during callChatApi:', err)
           }
         ) as CreateImageResponse
-        // console.info('inside 200')
-        // console.info(JSON.stringify(reply, null, 2))
         if (reply) {
           this.isCreateImageLoading = false
           console.info('time', reply.created.toString())
@@ -157,6 +168,42 @@ struct Index {
         console.error('Failed to fetch data: HTTP Code', code);
       }
     })
+  }
+
+  callEditImage(payload: EditImageBodyParams) {
+    const source = new chatDataSource()
+    Log.info('Edit response', 'enter callEditImage')
+
+    source.fetchHttpCode().then(async (code) => {
+      this.httpCode = code
+      Log.info('Edit response', JSON.stringify(payload, null, 2))
+
+      if (code === 200) {
+
+        const reply: CreateImageResponse = await source.editImage(payload).catch(
+          (err: BusinessError) => {
+            console.error('Error during callChatApi:', err)
+          }
+        ) as CreateImageResponse
+        Log.info('Edit response', JSON.stringify(reply, null, 2))
+        if (reply) {
+          console.info('reply param', reply.created.toString())
+          reply.data.forEach((item) => {
+            console.info('reply param', item.url)
+            this.imageList.push(item.url)
+            this.createImageBody.prompt = ''
+          })
+        }
+      } else {
+        this.isHttpError = true;
+        console.error('Failed to fetch data: HTTP Code', code);
+      }
+    })
+  }
+  async urlToFile(filePath: string) {
+    let f = await file.open(filePath);
+    let editPayload: EditImageBodyParams = new EditImageBodyParams(f, 'Modify it')
+    this.callEditImage(editPayload)
   }
 
   //methods about typing welcome page text
@@ -347,10 +394,24 @@ struct Index {
 
             })
             this.iconComponent($r('app.media.icon_record'), () => {
+              this.handleClick(MediaOption.Picture)
+              if (this.mediaBean.localUrl) {
+                Log.info('Edit response', this.mediaBean.localUrl)
+
+                this.urlToFile(this.mediaBean.localUrl)
+                // this.payload.
+                // this.callEditImage()
+                // Log.info('image URL', this.mediaBean.localUrl)
+              }
             })
             this.iconComponent($r('app.media.icon_earth'), () => {
             })
             Text(`Image:${this.isCreateImageLoading}`)
+            Image(this.mediaBean.localUrl)
+              .width(30)
+              .height(30)
+              .backgroundColor(Color.Grey)
+              .margin({ right: 200 })
             Blank()
               .layoutWeight(1)
             this.iconComponent($r('app.media.icon_conversation'), () => {
@@ -378,4 +439,9 @@ function iconStyle() {
   .objectFit(ImageFit.Contain)
 }
 
+enum MediaOption {
+  Picture = 0,
+  File = 1,
+  TakePhoto = 2
+}
 

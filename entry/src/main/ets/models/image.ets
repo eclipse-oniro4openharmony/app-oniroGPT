@@ -1,5 +1,6 @@
-// Image Generation
+import file from '@ohos.file.fs'; //用于读取普通文件
 
+// Image Generation
 class HeaderForImage {
   Authorization: string
   ContentType: string
@@ -13,7 +14,6 @@ class HeaderForImage {
 class CreateImageBodyParams {
   // 模型名称dall-e-3,dall-e-2
   model: string;
-
   prompt: string;
   /**
    * 要生成的图像数。必须介于 1 和 10 之间。
@@ -50,8 +50,16 @@ interface Image {
 }
 
 // Image Edit
+class EditImageBodyParams {
+  image: file.File
+  prompt: string
 
+  constructor(image: file.File, prompt: string) {
+    this.image = image
+    this.prompt = prompt
+  }
+}
 
 // Image Variations
 
-export { HeaderForImage, CreateImageBodyParams, CreateImageResponse }
+export { HeaderForImage, CreateImageBodyParams, CreateImageResponse, EditImageBodyParams }

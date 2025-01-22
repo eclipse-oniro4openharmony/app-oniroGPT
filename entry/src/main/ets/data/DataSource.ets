@@ -2,7 +2,7 @@ import http from '@ohos.net.http';
 import { BusinessError } from '@ohos.base';
 import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
-import { CreateImageBodyParams, CreateImageResponse, HeaderForImage } from '../models/image';
+import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
 const BASE_URL = "https://api.openai.com"
 
 const getModel = BASE_URL + "/v1/models"
@@ -15,6 +15,9 @@ const makeChat = BASE_URL + "/v1/chat/completions"
 
 const createImage = BASE_URL +"/v1/images/generations"
 // const model: string = 'gpt-3.5-turbo'
+
+const editImage = BASE_URL +"/v1/images/edits"
+
 
 const contentType: string = 'application/json'
 
@@ -150,10 +153,10 @@ class chatDataSource {
     })
   }
 
-  async editImage(payload: CreateImageBodyParams): Promise<CreateImageResponse> {
+  async editImage(payload: EditImageBodyParams): Promise<CreateImageResponse> {
     return new Promise<CreateImageResponse>((resolve, reject) => {
       let httpRequest = http.createHttp()
-      httpRequest.request(createImage,
+      httpRequest.request(editImage,
         {
           method: http.RequestMethod.POST,
           header: new HeaderForImage(authToken, contentType),
