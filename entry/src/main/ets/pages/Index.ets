@@ -1,5 +1,5 @@
 import { chatDataSource } from '../data/DataSource'
-import { convertToBase64 } from '../utils/ImageUtils'
+import { checkFileExist, convertToBase64, readFileAsUint8Array, testReadUrl } from '../utils/fileUtils'
 import {
   Content,
   Body,
@@ -36,7 +36,7 @@ struct Index {
   @State isHttpError: boolean = false
   @State modelResponse: DataResponse | null = null
   @State modelList: Model[] = []
-  @State selectedModel: string = 'gpt-3.5-turbo'
+  @State selectedModel: string = 'gpt-4o-mini' //'gpt-3.5-turbo'
   @State messages: Message[] = [] // todo: Consider to place all the data into database
   //Select model list
   @State selectList: SelectModel[] = []
@@ -50,7 +50,7 @@ struct Index {
   @State currentTextContent: TextContent = new TextContent()
   // todo: Image required to be `Base64 encoded` data, can't be url
 
-  @State currentImageContent: ImageContent = new ImageContent('file://media/Photo/5/IMG_1737541853_004/IMG_2025122_182913.jpg')
+  @State currentImageContent: ImageContent = new ImageContent('')
   private role: string = 'user'
   @State newMessage: Message = new Message('', [])
   @State payload: Body = new Body(this.selectedModel, this.messages)
@@ -127,15 +127,17 @@ struct Index {
 
     source.fetchHttpCode().then(async (code) => {
       this.httpCode = code
+      Log.info('callChatResponse', 'inside call Chat')
 
       if (code === 200) {
+        Log.info('callChatResponse', 'inside 200 call Chat')
 
         const reply: ChatResponse = await source.callChatApi(payload).catch(
           (err: BusinessError) => {
             console.error('Error during callChatApi:', err)
           }
         ) as ChatResponse
-        console.info('callChatResponse', JSON.stringify(reply, null, 2))
+        Log.info('callChatResponse', JSON.stringify(reply, null, 2))
         if (reply && reply.choices) {
           this.repliedChoices = reply.choices;
           this.repliedChoices.forEach((item: Choice) => {
@@ -373,9 +375,13 @@ struct Index {
                   else {
                     this.currentTextContent.text = this.newMessageContent
                     this.currentContent.push(this.currentTextContent)
-                    if (this.currentImageContent.image_url) {
+                    if (this.mediaBean.localUrl) {
+                      this.currentImageContent.image_url.url = this.mediaBean.localUrl
                       this.currentContent.push(this.currentImageContent)
                     }
+                    // if (this.currentImageContent.image_url) {
+                    //   this.currentContent.push(this.currentImageContent)
+                    // }
                     console.info('currentTextContent', this.currentTextContent.text, 'newMsg', this.newMessageContent)
                     this.newMessage = new Message(this.role, this.currentContent)
                     this.newMessageContent = ''
@@ -401,9 +407,32 @@ struct Index {
                   //Upload current message
                   this.currentTextContent.text = this.newMessageContent
                   this.currentContent.push(this.currentTextContent)
-                  if (this.currentImageContent.image_url) {
-                    this.currentContent.push(this.currentImageContent)
+
+                  Log.info('Image current url:', this.mediaBean.localUrl)
+
+                  if (this.mediaBean.localUrl) {
+                    // this.mediaHelper.checkFileExist()
+                    // testReadUrl(this.mediaBean.localUrl)
+                    // checkFileExist(this.mediaBean.localUrl)
+                    //todo: test only, delete later
+                    // this.mediaHelper.readFileAsUint8Array()
+                    // readFileAsUint8Array()
+                    // todo: Test functionality, unblock the following code later
+                      this.mediaHelper.convertToBase64()
+                    // convertToBase64()
+                    .then((base64String: string) => {
+                      this.currentImageContent.image_url.url = `${base64String}`
+                      Log.info('Image current base64:', base64String)
+                      Log.info('Image current content url:', this.currentImageContent.image_url.url)
+                      this.currentContent.push(this.currentImageContent)
+                    })
+                    .catch((error: BusinessError) => {
+                      console.error('Error converting image to Base64:', error);
+                    })
                   }
+                  // if (this.currentImageContent.image_url) {
+                  //   this.currentContent.push(this.currentImageContent)
+                  // }
                   this.newMessage = new Message(this.role, this.currentContent)
                   this.newMessageContent = ''
                   this.messages.push(this.newMessage)
@@ -420,7 +449,6 @@ struct Index {
               this.isWelcomeStatus = false
               this.isImageIconClick = !this.isImageIconClick
               this.createImageTextIndex = 0
-
             })
             this.iconComponent($r('app.media.icon_record'), () => {
               this.handleClick(MediaOption.Picture)

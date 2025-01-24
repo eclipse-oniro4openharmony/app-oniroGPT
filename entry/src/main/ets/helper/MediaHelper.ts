@@ -7,17 +7,26 @@ import { StringUtils } from '../utils/StringUtils';
 import mediaLibrary from '@ohos.multimedia.mediaLibrary';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import dataSharePredicates from '@ohos.data.dataSharePredicates';
+import fs from '@ohos.file.fs'; //用于读取普通文件
+import fileUri from '@ohos.file.fileuri';
+import util from '@ohos.util';
+import image from '@ohos.multimedia.image';
+import { BusinessError } from '@ohos.base';
+import buffer from '@ohos.buffer';
+
 
 export class MediaHelper {
   private readonly TAG: string = 'MediaHelper';
-
+  private base64 = ''
   private mContext: common.Context;
+  private uri: string = ''
+  private profileImage: image.PixelMap = new Object() as image.PixelMap
 
   constructor(context: common.Context) {
     this.mContext = context;
   }
 
- // Select Image
+  // Select Image
 
   public selectPicture(): Promise<MediaBean> {
 
@@ -27,12 +36,45 @@ export class MediaHelper {
       photoSelectOptions.maxSelectNumber = 1;
       let photoPicker = new picker.PhotoViewPicker();
       return photoPicker.select(photoSelectOptions)
-        .then((photoSelectResult) => {
+        .then((photoSelectResult: picker.PhotoSelectResult) => {
           Log.info(this.TAG, 'PhotoViewPicker.select successfully, PhotoSelectResult uri: ' + JSON.stringify(photoSelectResult));
 
           if (photoSelectResult && photoSelectResult.photoUris && photoSelectResult.photoUris.length > 0) {
-            let filePath = photoSelectResult.photoUris[0];
-            Log.info(this.TAG, 'PhotoViewPicker.select successfully, PhotoSelectResult uri: ' + filePath);
+
+            // get selected image uri
+            let filePath = photoSelectResult.photoUris[0]
+            Log.info(this.TAG, 'PhotoViewPicker.select successfully, PhotoSelectResult uri: ' + filePath)
+            Log.info(this.TAG, 'mContext: ', this.mContext.filesDir)
+
+            // get application context path
+            let filesDir = this.mContext.filesDir
+            let fileName = "userUploadedImages"
+
+            // get filepath in sandbox
+            let path = filesDir + "/" + fileName + "." + filePath.split(".")[1] // 提取文件后缀
+            Log.info(this.TAG, '沙箱中文件路径(before copy): ', path)
+            let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY) // 系统资源图片
+            let file2 = fs.openSync(path, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE) // 目的地图片
+
+            // Image copy from imageUri to the sandbox
+            fs.copyFileSync(file.fd, file2.fd)
+            fs.closeSync(file.fd)
+            fs.closeSync(file2.fd)
+
+            // Get image sandbox path corresponding uri
+            this.uri = path
+            Log.info(this.TAG, '沙箱中文件路径(after copy): ', this.uri)
+            if (fs.accessSync(path)) {
+              console.info(this.TAG, 'Fileq exists:', path);
+            } else {
+              console.error(this.TAG, 'Fileq does not exist:', path);
+            }
+
+            if (fs.accessSync(this.uri)) {
+              console.info(this.TAG, 'Fileq url exists:', this.uri);
+            } else {
+              console.error(this.TAG, 'Fileq url does not exist:', this.uri);
+            }
             return filePath;
           }
 
@@ -46,6 +88,121 @@ export class MediaHelper {
     } catch (err) {
       Log.error(this.TAG, 'PhotoViewPicker failed with err: ' + err);
       return Promise.reject(err);
+    }
+  }
+
+  public checkFileExist() {
+    let testPath = this.uri
+    const openedFile = fs.openSync(testPath, fs.OpenMode.CREATE)
+    if (fs.accessSync(testPath)) {
+      console.info('Fileq exists:', testPath);
+    } else {
+      console.error('Fileq does not exist:', testPath);
+    }
+  }
+
+  public readFileAsUint8Array(): Promise<Uint8Array> {
+    try {
+      let testPath: string = this.uri
+      // 打开文件
+      //这里报错的话大部分是因为路径下文件为只读模式，可你写的模式为读写模式
+      const openedFile = fs.openSync(testPath, fs.OpenMode.READ_WRITE)
+
+      // 获取文件大小
+      const stats = fs.statSync(testPath)
+      // 根据文件大小开辟对应缓存空间
+      let buffer: ArrayBuffer = new ArrayBuffer(stats.size)
+      Log.info('Base 64', 'opened path:', openedFile.path)
+      Log.info('Base 64', 'pathDir:', this.mContext.filesDir)
+      Log.info('Base 64', 'File descriptor:', openedFile.fd)
+
+      // todo: 问题所在之处， 无法将文件数据读取到缓存中
+
+      fs.readSync(openedFile.fd, buffer, { offset: 0, length: stats.size })
+
+      // Log.info('Base 64', 'File allocated buffer after read:', stringUtils.arrayBuffer2String(buffer))
+
+      // convert arrayBuffer flow into Unit8Array flow
+      // const uint8Array = new Uint8Array(buffer)
+
+      // 关闭文件
+      fs.closeSync(openedFile);
+
+      // return uint8Array;
+
+      return new Promise<Uint8Array>((resolve) => {
+        let uint8Array = new Uint8Array(buffer)
+        Log.info('Base 64', 'File successfully read as Uint8Array:', uint8Array);
+        // unit8ArrayPrint()
+        resolve(uint8Array)
+      })
+    } catch (err) {
+      Log.error('Base 64', 'Error reading file:', err);
+      Log.error('Base 64', 'Error reading file:', this.mContext);
+      return Promise.reject(err);
+    }
+  }
+
+  public async convertToBase64() {
+    try {
+      // // 读取文件内容为 Uint8Array
+      // let uint8Array = await this.readFileAsUint8Array();
+      //
+      // // 创建 Base64Helper 实例
+      // const base64 = new util.Base64Helper();
+      //
+      // // 转换为 Base64 字符串
+      // const base64Str = base64.encodeToStringSync(uint8Array, util.Type.MIME);
+      // console.info(this.TAG, 'Base 64 Encoded String:', base64Str);
+      await this.getPixelMap(); // 确保 PixelMap 创建完成
+      await this.pixelToBase64(); // 再进行 Base64 转换
+      return this.base64
+    } catch (err) {
+      Log.error(this.TAG, 'Base 64', 'Error converting to Base64:', err);
+      return err as string
+    }
+  }
+
+  public async getPixelMap(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // 通过uri打开图片文件，获取文件fd
+        let file = fs.openSync(this.uri, fs.OpenMode.READ_WRITE);
+        const imageSourceApi = image.createImageSource(file.fd);
+
+        // 将图片解码为pixelmap
+        imageSourceApi.createPixelMap({ editable: true }).then(pixelmap => {
+          this.profileImage = pixelmap;
+          console.log('Succeeded in creating pixelmap object through image decoding parameters.');
+          resolve(); // 解码完成后，返回成功
+        }).catch((err: BusinessError) => {
+          console.error('Failed to create pixelmap object through image decoding parameters.', err);
+          reject(err); // 处理错误
+        });
+      } catch (error) {
+        console.error('Error in getPixelMap:', error);
+        reject(error);
+      }
+    });
+  }
+
+  // PixelMap to Base 64
+  public async pixelToBase64(): Promise<void> {
+    try {
+      if (!this.profileImage) {
+        console.error('PixelMap not initialized.');
+        return;
+      }
+
+      const imagePackerApi: image.ImagePacker = image.createImagePacker();
+      let packOpts: image.PackingOption = { format: 'image/jpeg', quality: 100 };
+
+      const data: ArrayBuffer = await imagePackerApi.packing(this.profileImage, packOpts);
+      let buf: buffer.Buffer = buffer.from(data);
+      this.base64 = 'data:image/jpeg;base64,' + buf.toString('base64', 0, buf.length);
+      console.log('Base64 Encoded Image:', this.base64);
+    } catch (error) {
+      console.error('Error in pixelToBase64:', error);
     }
   }
 
@@ -107,8 +264,8 @@ export class MediaHelper {
   }
 
 
-   // encapsulate attached entity class
-   // @param uri (file path)
+  // encapsulate attached entity class
+  // @param uri (file path)
   private async buildMediaBean(uri: string): Promise<MediaBean> {
 
     if (StringUtils.isNullOrEmpty(uri)) {
@@ -172,5 +329,4 @@ export class MediaHelper {
 
     }
   }
-
 }

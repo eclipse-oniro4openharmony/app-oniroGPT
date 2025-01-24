@@ -3,7 +3,7 @@ import util from '@ohos.util';
 
 let base64 = new util.Base64Helper();
 
-async function convertToBase64(filePath: string) {
+async function convertToBase64(filePath: string): Promise<string> {
   try {
     // 读取文件内容为 Uint8Array
     const uint8Array = await readFileAsUint8Array(filePath);
@@ -18,9 +18,9 @@ async function convertToBase64(filePath: string) {
     return base64Str;
   } catch (err) {
     console.error('Error converting to Base64:', err);
+    return err
   }
 }
-
 
 async function readFileAsUint8Array(filePath: string): Promise<Uint8Array> {
   try {
@@ -42,7 +42,7 @@ async function readFileAsUint8Array(filePath: string): Promise<Uint8Array> {
     return uint8Array;
   } catch (err) {
     console.error('Error reading file:', err);
-    // throw err;
+    return Promise.reject(err);
   }
 }
 
