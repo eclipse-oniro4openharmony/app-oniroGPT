@@ -9,7 +9,9 @@ import {
   Message,
   Model,
   TextContent,
-  ImageContent
+  ImageContent,
+  imageExist,
+  MessageTxtImg
 } from '../models/models';
 import { BusinessError, Callback } from '@ohos.base';
 import { ChatResponse, Choice } from '../models/chat';
@@ -38,6 +40,7 @@ struct Index {
   @State modelList: Model[] = []
   @State selectedModel: string = 'gpt-4o-mini' //'gpt-3.5-turbo'
   @State messages: Message[] = [] // todo: Consider to place all the data into database
+  @State messagesWithImage: MessageTxtImg[] = []
   //Select model list
   @State selectList: SelectModel[] = []
   @State selectIndex: number = 0
@@ -47,7 +50,7 @@ struct Index {
   @State newMessageContent: string = ''
   @State newReplyContent: string = ''
   @State currentContent: Content[] = []
-  @State currentTextContent: TextContent = new TextContent()
+  @State currentTextContent: TextContent = new TextContent('')
   // todo: Image required to be `Base64 encoded` data, can't be url
 
   @State currentImageContent: ImageContent = new ImageContent('')
@@ -72,6 +75,9 @@ struct Index {
   @State isImageIconClick: boolean = false
   @State imageGenerateDescription: string = ''
   private imageGenerateGuide: string = 'Please describe your image'
+  @State isCurrentMessageUploadImage: boolean = false
+  @State uploadImageList: string[] = []
+  @State currentMessageIndex: number = -1
   // Media
   private mediaHelper: MediaHelper = new MediaHelper(getContext());
   @State mediaBean: MediaBean = new MediaBean();
@@ -146,6 +152,7 @@ struct Index {
 
             this.currentContent = item.message?.content || []
             this.messages.push(new Message('assistant', this.currentContent))
+            this.messagesWithImage.push(new MessageTxtImg((new Message('assistant', this.currentContent)), ''))
           })
         }
       } else {
@@ -294,25 +301,79 @@ struct Index {
               .justifyContent(FlexAlign.Center)
             } else {
               List() {
-                ForEach(this.messages, (item: Message) => {
+                // ForEach(this.messages, (item: Message) => {
+                //   ListItem() {
+                //     Row({ space: 20 }) {
+                //       if (item.role == 'user') {
+                //         Column() {
+                //           Row() {
+                //             Text(`image list len: ${this.uploadImageList.length}`)
+                //             Image(this.uploadImageList[this.currentMessageIndex])
+                //               .width(200)
+                //           }
+                //
+                //           Row() {
+                //             Row() {
+                //               Text((item.content[item.content.length-1] as TextContent).text)
+                //                 .margin(10)
+                //             }
+                //             .borderRadius(10)
+                //             .borderWidth(1)
+                //             .margin(10)
+                //           }
+                //           .width('100%')
+                //           .justifyContent(FlexAlign.End)
+                //         }
+                //         .width('100%')
+                //       }
+                //       else if (item.role == 'assistant') {
+                //         Row() {
+                //           Row() {
+                //             Text((item.content.toString()))
+                //               .margin(10)
+                //           }
+                //           .borderRadius(10)
+                //           .borderWidth(1)
+                //           .margin(10)
+                //           .backgroundColor(Color.Orange)
+                //         }
+                //         .width('100%')
+                //         .justifyContent(FlexAlign.Start)
+                //       }
+                //     }
+                //     .width('100%')
+                //   }
+                // })
+
+                ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
                   ListItem() {
                     Row({ space: 20 }) {
-                      if (item.role == 'user') {
-                        Row() {
+                      if (item.message.role == 'user') {
+                        Column() {
                           Row() {
-                            Text((item.content[item.content.length-1] as TextContent).text)
-                              .margin(10)
+                            Text(`image list len: ${this.uploadImageList.length}`)
+                            Image(item.img)
+                              .width(200)
                           }
-                          .borderRadius(10)
-                          .borderWidth(1)
-                          .margin(10)
+
+                          Row() {
+                            Row() {
+                              Text((item.message.content[0] as TextContent).text)
+                                .margin(10)
+                            }
+                            .borderRadius(10)
+                            .borderWidth(1)
+                            .margin(10)
+                          }
+                          .width('100%')
+                          .justifyContent(FlexAlign.End)
                         }
                         .width('100%')
-                        .justifyContent(FlexAlign.End)
-                      } else {
+                      }
+                      else if (item.message.role == 'assistant') {
                         Row() {
                           Row() {
-                            Text((item.content[item.content.length-1] as TextContent).text)
+                            Text((item.message.content.toString()))
                               .margin(10)
                           }
                           .borderRadius(10)
@@ -327,6 +388,7 @@ struct Index {
                     .width('100%')
                   }
                 })
+
               }
 
               List() {
@@ -379,13 +441,11 @@ struct Index {
                       this.currentImageContent.image_url.url = this.mediaBean.localUrl
                       this.currentContent.push(this.currentImageContent)
                     }
-                    // if (this.currentImageContent.image_url) {
-                    //   this.currentContent.push(this.currentImageContent)
-                    // }
                     console.info('currentTextContent', this.currentTextContent.text, 'newMsg', this.newMessageContent)
                     this.newMessage = new Message(this.role, this.currentContent)
                     this.newMessageContent = ''
                     this.messages.push(this.newMessage)
+                    // this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
                     this.payload.messages.forEach((item) => {
                       console.info('payload', JSON.stringify(item.content, null, 2))
                     })
@@ -398,44 +458,48 @@ struct Index {
               .type(ButtonType.Normal)
               .borderRadius(3)
               .onClick(() => {
+                // 每次发消息的时候都会push一个image到upload列表, 有image的话就有数据
                 if (this.isImageIconClick) {
                   this.createImageBody.prompt = this.imageGenerateDescription
                   this.startImageGenerateEffect()
                   this.callCreateImage(this.createImageBody)
                 } else {
                   this.isWelcomeStatus = false
-                  //Upload current message
-                  this.currentTextContent.text = this.newMessageContent
-                  this.currentContent.push(this.currentTextContent)
-
-                  Log.info('Image current url:', this.mediaBean.localUrl)
+                  this.currentContent = []
+                  this.currentContent.push(new TextContent(this.newMessageContent))
 
                   if (this.mediaBean.localUrl) {
-                    // this.mediaHelper.checkFileExist()
-                    // testReadUrl(this.mediaBean.localUrl)
-                    // checkFileExist(this.mediaBean.localUrl)
-                    //todo: test only, delete later
-                    // this.mediaHelper.readFileAsUint8Array()
-                    // readFileAsUint8Array()
-                    // todo: Test functionality, unblock the following code later
-                      this.mediaHelper.convertToBase64()
-                    // convertToBase64()
-                    .then((base64String: string) => {
-                      this.currentImageContent.image_url.url = `${base64String}`
-                      Log.info('Image current base64:', base64String)
-                      Log.info('Image current content url:', this.currentImageContent.image_url.url)
-                      this.currentContent.push(this.currentImageContent)
-                    })
-                    .catch((error: BusinessError) => {
-                      console.error('Error converting image to Base64:', error);
-                    })
+                    this.mediaHelper.convertToBase64()
+                      .then((base64String: string) => {
+                        this.currentImageContent.image_url.url = `${base64String}`
+                        this.currentContent.push(this.currentImageContent)
+                      })
+                      .catch((error: BusinessError) => {
+                        console.error('Error converting image to Base64:', error);
+                      })
+                    this.isCurrentMessageUploadImage = true
                   }
-                  // if (this.currentImageContent.image_url) {
-                  //   this.currentContent.push(this.currentImageContent)
-                  // }
                   this.newMessage = new Message(this.role, this.currentContent)
                   this.newMessageContent = ''
                   this.messages.push(this.newMessage)
+                  this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
+                  this.newMessage.content.forEach((item: Content) => {
+                    Log.info('current text info:', item as TextContent)
+                  })
+                  // check if image currently uploaded
+                  Log.info('Image upload check: ', this.isCurrentMessageUploadImage)
+                  if (this.isCurrentMessageUploadImage) {
+                    this.uploadImageList.push(this.mediaBean.localUrl)
+                  } else {
+                    this.uploadImageList.push('')
+                  }
+
+                  this.isCurrentMessageUploadImage = false
+                  this.currentMessageIndex++
+                  this.uploadImageList.forEach((item) => {
+                    Log.info('Image uri: ', item)
+                  })
+                  this.mediaBean.localUrl = ''
                   this.callChatMethod(this.payload)
                 }
               })
@@ -456,9 +520,6 @@ struct Index {
                 Log.info('Edit response', this.mediaBean.localUrl)
 
                 this.urlToFile(this.mediaBean.localUrl)
-                // this.payload.
-                // this.callEditImage()
-                // Log.info('image URL', this.mediaBean.localUrl)
               }
             })
             this.iconComponent($r('app.media.icon_earth'), () => {

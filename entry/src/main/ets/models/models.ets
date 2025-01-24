@@ -49,6 +49,10 @@ class ImageContent {
 class TextContent {
   type: string = 'text'
   text: string = ''
+
+  constructor(text: string) {
+    this.text = text
+  }
 }
 
 type Content = TextContent | ImageContent
@@ -87,5 +91,36 @@ class Body {
   }
 }
 
+class imageExist {
+  exist: boolean = false
+  img: string = ''
+
+  constructor(exist: boolean, img: string) {
+    this.exist = exist
+    this.img = img
+  }
+}
+
+class MessageTxtImg {
+  message: Message
+  img: string
+
+  constructor(msg: Message, img: string) {
+    this.message = msg
+    this.img = img
+  }
+}
+
 export {
-  HeaderForModel, DataResponse, Model, ChatBodyParams, Body, Message, Content, ImageContent, TextContent }
+  HeaderForModel,
+  DataResponse,
+  Model,
+  ChatBodyParams,
+  Body,
+  Message,
+  Content,
+  ImageContent,
+  TextContent,
+  imageExist,
+  MessageTxtImg
+}
