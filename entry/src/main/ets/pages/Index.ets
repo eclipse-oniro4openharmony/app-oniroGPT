@@ -103,11 +103,14 @@ struct Index {
       inputMessage: $inputMessage,
       changeInputValue: (val: string) => {
         this.currentSavedMessage.topic = val
-        this.isSaved = this.currentSavedMessage.isSaved
+        this.currentSavedMessage.isSaved = true
+        this.allMessages.push(this.currentSavedMessage)
+        this.currentSavedMessage = new MessageItem([], '')
       }
     }),
     alignment: DialogAlignment.Center
   })
+  @StorageLink('allMessages') allMessages: MessageItem[] = AppStorage.get('allMessages') ?? []
 
   // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
   aboutToAppear(): void {
@@ -291,71 +294,87 @@ struct Index {
 
   build() {
     Flex() {
-      Column() {
-        // todo: Implement select bar
-        Column() {
-          Row() {
-            Select(this.selectList)
-              .selected(this.selectIndex)
-              .value(this.selectedModel)
-              .onSelect((index: number, text?: string | undefined) => {
-                this.selectIndex = index
-                if (text) {
-                  this.selectedModel = text
+      SideBarContainer(SideBarContainerType.Embed) {
+        Column({ space: 5 }) {
+          List() {
+            ForEach(this.allMessages, (message: MessageItem) => {
+              ListItem() {
+                Row() {
+                  Text(message.topic)
                 }
-              })
-            Blank()
-              .layoutWeight(0.7)
-            Row() {
-              Row() {
-                Image(this.isSaved ? $r('app.media.icon_saved') : $r('app.media.icon_save'))
-                  .width(40)
-                  .margin({ right: 10 })
+                .width('100%')
+                .height(30)
+                .onClick(() => {
+                  Log.info('onclicktask', 'clicked')
+                  this.messagesWithImage = message.messages
+                  // message.messages.forEach((item)=>{
+                  //   Log.info('onclicktask', item.message.role)
+                  // })
+                })
               }
-              .width(50)
-              .justifyContent(FlexAlign.End)
-              .onClick(() => {
-                this.inputDialogController.open()
-                this.currentSavedMessage.messages = this.messagesWithImage
-                this.currentSavedMessage.topic = this.inputMessage
-              })
-
-              Row() {
-                Image($r('app.media.icon_history'))
-                  .width(40)
-                  .margin({ right: 10 })
-              }
-              .width(50)
-              .justifyContent(FlexAlign.End)
-              .onClick(() => {
-
-              })
-            }
-            .justifyContent(FlexAlign.End)
-            .borderWidth(1)
-            .layoutWeight(1)
-
+            })
           }
-          .width('100%')
         }
-        .width('100%')
-        .height(50)
-        .alignItems(HorizontalAlign.Start)
+        .margin({
+          top: 90
+        })
 
         Column() {
-          if (this.isWelcomeStatus) {
-            Column() {
-              Text(this.displayedText)
-                .fontWeight(600)
-                .fontSize(24)
+          // todo: Implement select bar
+          Column() {
+            Row() {
+              Select(this.selectList)
+                .selected(this.selectIndex)
+                .value(this.selectedModel)
+                .onSelect((index: number, text?: string | undefined) => {
+                  this.selectIndex = index
+                  if (text) {
+                    this.selectedModel = text
+                  }
+                })
+              Blank()
+                .layoutWeight(0.7)
+              Row() {
+                Row() {
+                  Image($r('app.media.icon_newchat'))
+                    .width(40)
+                    .margin({ right: 10 })
+                }
+                .width(50)
+                .justifyContent(FlexAlign.End)
+                .onClick(() => {
+                  this.messagesWithImage = []
+                })
+
+                Row() {
+                  Image($r('app.media.icon_save'))
+                    .width(40)
+                    .margin({ right: 10 })
+                }
+                .width(50)
+                .justifyContent(FlexAlign.End)
+                .onClick(() => {
+                  if (this.currentSavedMessage.isSaved) {
+                    this.currentSavedMessage.isSaved = false
+                  }
+                  this.inputDialogController.open()
+                  this.currentSavedMessage.messages = this.messagesWithImage
+                  this.currentSavedMessage.topic = this.inputMessage
+                })
+              }
+              .justifyContent(FlexAlign.End)
+              .layoutWeight(1)
             }
             .width('100%')
-            .height('100%')
-            .justifyContent(FlexAlign.Center)
-          } else {
-            if (this.isImageIconClick) {
+          }
+          .width('100%')
+          .height(50)
+          .alignItems(HorizontalAlign.Start)
+
+          Column() {
+            if (this.isWelcomeStatus) {
               Column() {
-                Text(`${this.isCreateImageLoading == true ? this.imageGenerateText : this.imageGenerateGuide}`)
+                Text(this.displayedText)
                   .fontWeight(600)
                   .fontSize(24)
               }
@@ -363,257 +382,280 @@ struct Index {
               .height('100%')
               .justifyContent(FlexAlign.Center)
             } else {
-              List() {
-                // ForEach(this.messages, (item: Message) => {
-                //   ListItem() {
-                //     Row({ space: 20 }) {
-                //       if (item.role == 'user') {
-                //         Column() {
-                //           Row() {
-                //             Text(`image list len: ${this.uploadImageList.length}`)
-                //             Image(this.uploadImageList[this.currentMessageIndex])
-                //               .width(200)
-                //           }
-                //
-                //           Row() {
-                //             Row() {
-                //               Text((item.content[item.content.length-1] as TextContent).text)
-                //                 .margin(10)
-                //             }
-                //             .borderRadius(10)
-                //             .borderWidth(1)
-                //             .margin(10)
-                //           }
-                //           .width('100%')
-                //           .justifyContent(FlexAlign.End)
-                //         }
-                //         .width('100%')
-                //       }
-                //       else if (item.role == 'assistant') {
-                //         Row() {
-                //           Row() {
-                //             Text((item.content.toString()))
-                //               .margin(10)
-                //           }
-                //           .borderRadius(10)
-                //           .borderWidth(1)
-                //           .margin(10)
-                //           .backgroundColor(Color.Orange)
-                //         }
-                //         .width('100%')
-                //         .justifyContent(FlexAlign.Start)
-                //       }
-                //     }
-                //     .width('100%')
-                //   }
-                // })
+              if (this.isImageIconClick) {
+                Column() {
+                  Text(`${this.isCreateImageLoading == true ? this.imageGenerateText : this.imageGenerateGuide}`)
+                    .fontWeight(600)
+                    .fontSize(24)
+                }
+                .width('100%')
+                .height('100%')
+                .justifyContent(FlexAlign.Center)
+              } else {
+                List() {
+                  // ForEach(this.messages, (item: Message) => {
+                  //   ListItem() {
+                  //     Row({ space: 20 }) {
+                  //       if (item.role == 'user') {
+                  //         Column() {
+                  //           Row() {
+                  //             Text(`image list len: ${this.uploadImageList.length}`)
+                  //             Image(this.uploadImageList[this.currentMessageIndex])
+                  //               .width(200)
+                  //           }
+                  //
+                  //           Row() {
+                  //             Row() {
+                  //               Text((item.content[item.content.length-1] as TextContent).text)
+                  //                 .margin(10)
+                  //             }
+                  //             .borderRadius(10)
+                  //             .borderWidth(1)
+                  //             .margin(10)
+                  //           }
+                  //           .width('100%')
+                  //           .justifyContent(FlexAlign.End)
+                  //         }
+                  //         .width('100%')
+                  //       }
+                  //       else if (item.role == 'assistant') {
+                  //         Row() {
+                  //           Row() {
+                  //             Text((item.content.toString()))
+                  //               .margin(10)
+                  //           }
+                  //           .borderRadius(10)
+                  //           .borderWidth(1)
+                  //           .margin(10)
+                  //           .backgroundColor(Color.Orange)
+                  //         }
+                  //         .width('100%')
+                  //         .justifyContent(FlexAlign.Start)
+                  //       }
+                  //     }
+                  //     .width('100%')
+                  //   }
+                  // })
 
-                ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
-                  ListItem() {
-                    Row({ space: 20 }) {
-                      if (item.message.role == 'user') {
-                        Column() {
-                          Row() {
-                            // Text(`image list len: ${this.uploadImageList.length}`)
-                            Image(item.img)
-                              .width(200)
+                  ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
+                    ListItem() {
+                      Row({ space: 20 }) {
+                        if (item.message.role == 'user') {
+                          Column() {
+                            Row() {
+                              // Text(`image list len: ${this.uploadImageList.length}`)
+                              Image(item.img)
+                                .width(200)
+                            }
+
+                            Row() {
+                              Row() {
+                                if ((item.message.content[0] as TextContent).text !== '') {
+                                  Text((item.message.content[0] as TextContent).text)
+                                    .margin(10)
+                                }
+                              }
+                              .borderRadius(10)
+                              .borderWidth(1)
+                              .margin(10)
+                            }
+                            .width('100%')
+                            .justifyContent(FlexAlign.End)
                           }
-
+                          .width('100%')
+                        }
+                        else if (item.message.role == 'assistant') {
                           Row() {
                             Row() {
-                              if ((item.message.content[0] as TextContent).text !== '') {
-                                Text((item.message.content[0] as TextContent).text)
-                                  .margin(10)
-                              }
+                              Text((item.message.content.toString()))
+                                .margin(10)
                             }
                             .borderRadius(10)
                             .borderWidth(1)
                             .margin(10)
+                            .backgroundColor(Color.Orange)
                           }
                           .width('100%')
-                          .justifyContent(FlexAlign.End)
+                          .justifyContent(FlexAlign.Start)
                         }
-                        .width('100%')
                       }
-                      else if (item.message.role == 'assistant') {
-                        Row() {
-                          Row() {
-                            Text((item.message.content.toString()))
-                              .margin(10)
-                          }
-                          .borderRadius(10)
-                          .borderWidth(1)
-                          .margin(10)
-                          .backgroundColor(Color.Orange)
-                        }
-                        .width('100%')
-                        .justifyContent(FlexAlign.Start)
+                      .width('100%')
+                    }
+                  })
+
+                }
+
+                List() {
+                  ForEach(this.imageList, (item: string) => {
+                    ListItem() {
+                      Row() {
+                        Image(item)
+                          .width('50%')
                       }
+                      .width('100%')
+                      .justifyContent(FlexAlign.Start)
                     }
-                    .width('100%')
-                  }
-                })
-
-              }
-
-              List() {
-                ForEach(this.imageList, (item: string) => {
-                  ListItem() {
-                    Row() {
-                      Image(item)
-                        .width('50%')
-                    }
-                    .width('100%')
-                    .justifyContent(FlexAlign.Start)
-                  }
-                })
+                  })
+                }
               }
             }
-          }
-        }.width('100%')
-        .layoutWeight(1)
+          }.width('100%')
+          .layoutWeight(1)
 
-        // todo: Require guide for image generation
-        // if (this.isImageIconClick) {
-        //   Text('Please describe your image')
-        // }
-        Column() {
-          Row({ space: 20 }) {
-            TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
-              .type(TextAreaType.NORMAL)
-              .onChange((content: string) => {
-                if (this.isImageIconClick) {
-                  this.imageGenerateDescription = content
-                } else {
-                  this.newMessageContent = content
-                  console.log(this.newMessageContent)
-                }
-              })
-              .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
-              .onSubmit((enterKey: EnterKeyType) => {
-                if (enterKey == EnterKeyType.Send) {
+          // todo: Require guide for image generation
+          // if (this.isImageIconClick) {
+          //   Text('Please describe your image')
+          // }
+          Column() {
+            Row({ space: 20 }) {
+              TextArea({ text: this.newMessageContent, placeholder: 'Message', controller: this.textAreaController })
+                .type(TextAreaType.NORMAL)
+                .onChange((content: string) => {
+                  if (this.isImageIconClick) {
+                    this.imageGenerateDescription = content
+                  } else {
+                    this.newMessageContent = content
+                    console.log(this.newMessageContent)
+                  }
+                })
+                .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
+                .onSubmit((enterKey: EnterKeyType) => {
+                  if (enterKey == EnterKeyType.Send) {
+                    this.isCurrentSelectedImageSent = true
+                    this.isWelcomeStatus = false
+                    //Upload current message
+                    if (this.isImageIconClick) {
+                      this.createImageBody.prompt = this.imageGenerateDescription
+                      this.startImageGenerateEffect()
+                      this.callCreateImage(this.createImageBody)
+                    }
+                    else {
+                      this.currentTextContent.text = this.newMessageContent
+                      this.currentContent.push(this.currentTextContent)
+                      if (this.mediaBean.localUrl) {
+                        this.currentImageContent.image_url.url = this.mediaBean.localUrl
+                        this.currentContent.push(this.currentImageContent)
+                      }
+                      console.info('currentTextContent', this.currentTextContent.text, 'newMsg', this.newMessageContent)
+                      this.newMessage = new Message(this.role, this.currentContent)
+                      this.newMessageContent = ''
+                      this.messages.push(this.newMessage)
+                      // this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
+                      this.payload.messages.forEach((item) => {
+                        console.info('payload', JSON.stringify(item.content, null, 2))
+                      })
+                      this.callChatMethod(this.payload)
+                    }
+                  }
+                })
+                .width('80%')
+              Button('Send')
+                .type(ButtonType.Normal)
+                .borderRadius(3)
+                .onClick(() => {
                   this.isCurrentSelectedImageSent = true
-                  this.isWelcomeStatus = false
-                  //Upload current message
+                  // 每次发消息的时候都会push一个image到upload列表, 有image的话就有数据
                   if (this.isImageIconClick) {
                     this.createImageBody.prompt = this.imageGenerateDescription
                     this.startImageGenerateEffect()
                     this.callCreateImage(this.createImageBody)
-                  }
-                  else {
-                    this.currentTextContent.text = this.newMessageContent
-                    this.currentContent.push(this.currentTextContent)
+                  } else {
+                    this.isWelcomeStatus = false
+                    this.currentContent = []
+                    this.currentContent.push(new TextContent(this.newMessageContent))
+
                     if (this.mediaBean.localUrl) {
-                      this.currentImageContent.image_url.url = this.mediaBean.localUrl
-                      this.currentContent.push(this.currentImageContent)
+                      this.mediaHelper.convertToBase64()
+                        .then((base64String: string) => {
+                          this.currentImageContent.image_url.url = `${base64String}`
+                          this.currentContent.push(this.currentImageContent)
+                        })
+                        .catch((error: BusinessError) => {
+                          console.error('Error converting image to Base64:', error);
+                        })
+                      this.isCurrentMessageUploadImage = true
                     }
-                    console.info('currentTextContent', this.currentTextContent.text, 'newMsg', this.newMessageContent)
                     this.newMessage = new Message(this.role, this.currentContent)
                     this.newMessageContent = ''
                     this.messages.push(this.newMessage)
-                    // this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
-                    this.payload.messages.forEach((item) => {
-                      console.info('payload', JSON.stringify(item.content, null, 2))
+                    this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
+                    this.newMessage.content.forEach((item: Content) => {
+                      Log.info('current text info:', item as TextContent)
                     })
+                    // check if image currently uploaded
+                    Log.info('Image upload check: ', this.isCurrentMessageUploadImage)
+                    if (this.isCurrentMessageUploadImage) {
+                      this.uploadImageList.push(this.mediaBean.localUrl)
+                    } else {
+                      this.uploadImageList.push('')
+                    }
+
+                    this.isCurrentMessageUploadImage = false
+                    this.currentMessageIndex++
+                    this.uploadImageList.forEach((item) => {
+                      Log.info('Image uri: ', item)
+                    })
+                    this.mediaBean.localUrl = ''
                     this.callChatMethod(this.payload)
                   }
+                })
+            }
+            .width('100%')
+
+            // Row of many functional labels
+            // todo: Implement onClick methods of each icon
+            Row({ space: 10 }) {
+              this.iconComponent($r('app.media.icon_image'), () => {
+                this.isWelcomeStatus = false
+                this.isImageIconClick = !this.isImageIconClick
+                this.createImageTextIndex = 0
+              })
+              this.iconComponent($r('app.media.icon_uploadImg'), () => {
+                this.isCurrentSelectedImageSent = false
+                this.handleClick(MediaOption.Picture)
+                if (this.mediaBean.localUrl) {
+                  Log.info('Edit response', this.mediaBean.localUrl)
+
+                  this.urlToFile(this.mediaBean.localUrl)
                 }
               })
-              .width('80%')
-            Button('Send')
-              .type(ButtonType.Normal)
-              .borderRadius(3)
-              .onClick(() => {
-                this.isCurrentSelectedImageSent = true
-                // 每次发消息的时候都会push一个image到upload列表, 有image的话就有数据
-                if (this.isImageIconClick) {
-                  this.createImageBody.prompt = this.imageGenerateDescription
-                  this.startImageGenerateEffect()
-                  this.callCreateImage(this.createImageBody)
-                } else {
-                  this.isWelcomeStatus = false
-                  this.currentContent = []
-                  this.currentContent.push(new TextContent(this.newMessageContent))
-
-                  if (this.mediaBean.localUrl) {
-                    this.mediaHelper.convertToBase64()
-                      .then((base64String: string) => {
-                        this.currentImageContent.image_url.url = `${base64String}`
-                        this.currentContent.push(this.currentImageContent)
-                      })
-                      .catch((error: BusinessError) => {
-                        console.error('Error converting image to Base64:', error);
-                      })
-                    this.isCurrentMessageUploadImage = true
-                  }
-                  this.newMessage = new Message(this.role, this.currentContent)
-                  this.newMessageContent = ''
-                  this.messages.push(this.newMessage)
-                  this.messagesWithImage.push(new MessageTxtImg(this.newMessage, this.mediaBean.localUrl))
-                  this.newMessage.content.forEach((item: Content) => {
-                    Log.info('current text info:', item as TextContent)
-                  })
-                  // check if image currently uploaded
-                  Log.info('Image upload check: ', this.isCurrentMessageUploadImage)
-                  if (this.isCurrentMessageUploadImage) {
-                    this.uploadImageList.push(this.mediaBean.localUrl)
-                  } else {
-                    this.uploadImageList.push('')
-                  }
-
-                  this.isCurrentMessageUploadImage = false
-                  this.currentMessageIndex++
-                  this.uploadImageList.forEach((item) => {
-                    Log.info('Image uri: ', item)
-                  })
-                  this.mediaBean.localUrl = ''
-                  this.callChatMethod(this.payload)
-                }
+              this.iconComponent($r("app.media.icon_record"), () => {
+                // todo: To be developed
               })
+              // Text(`Image:${this.isCreateImageLoading}`)
+              if (!this.isCurrentSelectedImageSent) {
+                Image(this.mediaBean.localUrl)
+                  .width(30)
+                  .height(30)
+                  .backgroundColor(Color.White)
+                  .margin({ right: 200 })
+              }
+              Blank()
+                .layoutWeight(1)
+            }
           }
           .width('100%')
+          .height(80)
+          .borderRadius(10)
+          .borderWidth(1)
+          .padding(5)
 
-          // Row of many functional labels
-          // todo: Implement onClick methods of each icon
-          Row({ space: 10 }) {
-            this.iconComponent($r('app.media.icon_image'), () => {
-              this.isWelcomeStatus = false
-              this.isImageIconClick = !this.isImageIconClick
-              this.createImageTextIndex = 0
-            })
-            this.iconComponent($r('app.media.icon_uploadImg'), () => {
-              this.isCurrentSelectedImageSent = false
-              this.handleClick(MediaOption.Picture)
-              if (this.mediaBean.localUrl) {
-                Log.info('Edit response', this.mediaBean.localUrl)
-
-                this.urlToFile(this.mediaBean.localUrl)
-              }
-            })
-            this.iconComponent($r('app.media.icon_record'), () => {
-              // todo: To be developed
-            })
-            // Text(`Image:${this.isCreateImageLoading}`)
-            if (!this.isCurrentSelectedImageSent) {
-              Image(this.mediaBean.localUrl)
-                .width(30)
-                .height(30)
-                .backgroundColor(Color.White)
-                .margin({ right: 200 })
-            }
-            Blank()
-              .layoutWeight(1)
-          }
         }
         .width('100%')
-        .height(80)
-        .borderRadius(10)
-        .borderWidth(1)
-        .padding(5)
-
+        .height('100%')
       }
-      .width('100%')
-      .height('100%')
+      .controlButton({
+        icons: {
+          hidden: $r('app.media.icon_history'),
+          shown: $r('app.media.icon_history'),
+          switching: $r('app.media.icon_history')
+        },
+        width: 32,
+        height: 32
+      })
+      .sideBarWidth(150)
+      .minSideBarWidth(50)
+      .maxSideBarWidth('100%')
     }
     .width('100%')
   }

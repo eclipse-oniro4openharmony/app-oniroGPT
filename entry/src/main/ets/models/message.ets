@@ -8,7 +8,7 @@ class MessageItem {
   constructor(messages: MessageTxtImg[], topic: string) {
     this.messages = messages
     this.topic = topic
-    this.isSaved = true
+    this.isSaved = false
   }
 }
 

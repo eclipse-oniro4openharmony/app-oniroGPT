@@ -5,7 +5,7 @@ import { MessageItem } from '../models/message'
 export struct InputWindowDialog {
   @Link inputMessage: string
   controller: CustomDialogController
-  changeInputValue: (val: string) => void
+  changeInputValue!: (val: string) => void
 
   build() {
     Column() {
