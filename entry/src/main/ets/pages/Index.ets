@@ -263,18 +263,33 @@ struct Index {
   build() {
     Flex() {
       Column() {
-
         // todo: Implement select bar
         Column() {
-          Select(this.selectList)
-            .selected(this.selectIndex)
-            .value(this.selectedModel)
-            .onSelect((index: number, text?: string | undefined) => {
-              this.selectIndex = index
-              if (text) {
-                this.selectedModel = text
-              }
+          Row() {
+            Select(this.selectList)
+              .selected(this.selectIndex)
+              .value(this.selectedModel)
+              .onSelect((index: number, text?: string | undefined) => {
+                this.selectIndex = index
+                if (text) {
+                  this.selectedModel = text
+                }
+              })
+
+            Blank()
+
+            Row() {
+              Image($r('app.media.icon_history'))
+                .width(40)
+                .margin({right: 10})
+            }
+            .width('200')
+            .justifyContent(FlexAlign.End)
+            .onClick(()=>{
+
             })
+          }
+          .width('100%')
         }
         .width('100%')
         .height(50)
