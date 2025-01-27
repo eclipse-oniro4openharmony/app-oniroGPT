@@ -28,6 +28,18 @@ export class MediaHelper {
 
   // Select Image
 
+  private urlIntoSandbox(srcPath: string, dstPath: string): string {
+    let file = fs.openSync(srcPath, fs.OpenMode.READ_ONLY) // 系统资源图片
+    let file2 = fs.openSync(dstPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE) // 目的地图片
+    Log.info(this.TAG, 'filePath: ', srcPath)
+
+    // Image copy from imageUri to the sandbox
+    fs.copyFileSync(file.fd, file2.fd)
+    fs.closeSync(file.fd)
+    fs.closeSync(file2.fd)
+    return dstPath
+  }
+
   public selectPicture(): Promise<MediaBean> {
 
     try {
@@ -53,38 +65,39 @@ export class MediaHelper {
             // get filepath in sandbox
             let path = filesDir + "/" + fileName + "." + filePath.split(".")[1] // 提取文件后缀
             Log.info(this.TAG, '沙箱中文件路径(before copy): ', path)
-            let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY) // 系统资源图片
-            let file2 = fs.openSync(path, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE) // 目的地图片
-
-            // Image copy from imageUri to the sandbox
-            fs.copyFileSync(file.fd, file2.fd)
-            fs.closeSync(file.fd)
-            fs.closeSync(file2.fd)
+            // let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY) // 系统资源图片
+            // let file2 = fs.openSync(path, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE) // 目的地图片
+            // Log.info(this.TAG, 'filePath: ', filePath)
+            //
+            // // Image copy from imageUri to the sandbox
+            // fs.copyFileSync(file.fd, file2.fd)
+            // fs.closeSync(file.fd)
+            // fs.closeSync(file2.fd)
 
             // Get image sandbox path corresponding uri
-            this.uri = path
+            this.uri = this.urlIntoSandbox(filePath, path)
             Log.info(this.TAG, '沙箱中文件路径(after copy): ', this.uri)
             if (fs.accessSync(path)) {
               console.info(this.TAG, 'Fileq exists:', path);
             } else {
-              console.error(this.TAG, 'Fileq does not exist:', path);
+              console.error(this.TAG, 'Fileq does not exist:', path)
             }
 
             if (fs.accessSync(this.uri)) {
-              console.info(this.TAG, 'Fileq url exists:', this.uri);
+              console.info(this.TAG, 'Fileq url exists:', this.uri)
             } else {
-              console.error(this.TAG, 'Fileq url does not exist:', this.uri);
+              console.error(this.TAG, 'Fileq url does not exist:', this.uri)
             }
-            return filePath;
+            return filePath
           }
 
         }).catch((err) => {
-          Log.error(this.TAG, 'PhotoViewPicker.select failed with err: ' + err);
-          return err;
+          Log.error(this.TAG, 'PhotoViewPicker.select failed with err: ' + err)
+          return err
         }).then(async (filePath) => {
-          const mediaBean = await this.buildMediaBean(filePath);
-          return mediaBean;
-        });
+          const mediaBean = await this.buildMediaBean(filePath)
+          return mediaBean
+        })
     } catch (err) {
       Log.error(this.TAG, 'PhotoViewPicker failed with err: ' + err);
       return Promise.reject(err);
@@ -249,9 +262,36 @@ export class MediaHelper {
     return context.startAbilityForResult(want)
       .then((result) => {
         Log.info(this.TAG, `startAbility call back , ${JSON.stringify(result)}`);
-        if (result.resultCode === 0 && result.want && StringUtils.isNotNullOrEmpty(result.want.uri)) {
+        Log.info(this.TAG, `startAbility call back outside ${(result.want.parameters['resourceUri'])} ${StringUtils.isNotNullOrEmpty(result.want.uri)}`);
+        let photoUrl: string = (result.want.parameters['resourceUri']).toString()
+        if (result.resultCode === 0 && result.want && StringUtils.isNotNullOrEmpty(photoUrl)) {
           //拍照成功
+          Log.info(this.TAG, `startAbility call back inside`);
+          // Log.info(this.TAG, 'takePhoto successfully, takePhotoResult uri: ' + result.want.uri);
+          result.want.uri = photoUrl
           Log.info(this.TAG, 'takePhoto successfully, takePhotoResult uri: ' + result.want.uri);
+
+          // todo: add upload current taken photo image
+          // 拍照后调用openSync方法报错
+
+          let filePath = photoUrl
+
+          // get application context path
+          let filesDir = this.mContext.filesDir
+          let fileName = "userUploadedImages"
+
+          // get filepath in sandbox
+          let path = filesDir + "/" + fileName + "." + filePath.split(".")[1] // 提取文件后缀
+          Log.info(this.TAG, '沙箱中文件路径(before copy): ', path)
+          // let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY) // 系统资源图片
+          // let file2 = fs.openSync(path, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE) // 目的地图片
+          //
+          // // Image copy from imageUri to the sandbox
+          // fs.copyFileSync(file.fd, file2.fd)
+          // fs.closeSync(file.fd)
+          // fs.closeSync(file2.fd)
+
+          // Get image sandbox path corresponding uri
           return result.want.uri;
         }
       }).catch((error) => {
@@ -328,5 +368,17 @@ export class MediaHelper {
       mediaBean.fileType = fileInfoObj.photoType.toString()
 
     }
+  }
+}
+
+class Params {
+  mode: string
+  moduleName: string = ''
+  resourceUri: string
+
+  constructor(mode: string, moduleName: string, resourceUri: string) {
+    this.mode = mode
+    this.moduleName = moduleName
+    this.resourceUri = resourceUri
   }
 }

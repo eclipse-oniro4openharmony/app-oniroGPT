@@ -78,6 +78,7 @@ struct Index {
   @State isCurrentMessageUploadImage: boolean = false
   @State uploadImageList: string[] = []
   @State currentMessageIndex: number = -1
+  @State isCurrentSelectedImageSent: boolean = false
   // Media
   private mediaHelper: MediaHelper = new MediaHelper(getContext());
   @State mediaBean: MediaBean = new MediaBean();
@@ -99,7 +100,7 @@ struct Index {
         this.modelList = await source.fetchModels()
 
         this.modelList.forEach((item: Model) => {
-          this.selectList.push(new SelectModel(item.id, $r("app.media.icon")))
+          this.selectList.push(new SelectModel(item.id, $r("app.media.icon_oniro")))
         })
       } else {
         this.isHttpError = true;
@@ -351,15 +352,17 @@ struct Index {
                       if (item.message.role == 'user') {
                         Column() {
                           Row() {
-                            Text(`image list len: ${this.uploadImageList.length}`)
+                            // Text(`image list len: ${this.uploadImageList.length}`)
                             Image(item.img)
                               .width(200)
                           }
 
                           Row() {
                             Row() {
-                              Text((item.message.content[0] as TextContent).text)
-                                .margin(10)
+                              if ((item.message.content[0] as TextContent).text !== '') {
+                                Text((item.message.content[0] as TextContent).text)
+                                  .margin(10)
+                              }
                             }
                             .borderRadius(10)
                             .borderWidth(1)
@@ -427,6 +430,7 @@ struct Index {
               .enterKeyType(EnterKeyType.Send)// Configure enter key to trigger event "Send"
               .onSubmit((enterKey: EnterKeyType) => {
                 if (enterKey == EnterKeyType.Send) {
+                  this.isCurrentSelectedImageSent = true
                   this.isWelcomeStatus = false
                   //Upload current message
                   if (this.isImageIconClick) {
@@ -458,6 +462,7 @@ struct Index {
               .type(ButtonType.Normal)
               .borderRadius(3)
               .onClick(() => {
+                this.isCurrentSelectedImageSent = true
                 // 每次发消息的时候都会push一个image到upload列表, 有image的话就有数据
                 if (this.isImageIconClick) {
                   this.createImageBody.prompt = this.imageGenerateDescription
@@ -514,7 +519,8 @@ struct Index {
               this.isImageIconClick = !this.isImageIconClick
               this.createImageTextIndex = 0
             })
-            this.iconComponent($r('app.media.icon_record'), () => {
+            this.iconComponent($r('app.media.icon_uploadImg'), () => {
+              this.isCurrentSelectedImageSent = false
               this.handleClick(MediaOption.Picture)
               if (this.mediaBean.localUrl) {
                 Log.info('Edit response', this.mediaBean.localUrl)
@@ -522,18 +528,19 @@ struct Index {
                 this.urlToFile(this.mediaBean.localUrl)
               }
             })
-            this.iconComponent($r('app.media.icon_earth'), () => {
+            this.iconComponent($r('app.media.icon_record'), () => {
+              // todo: To be developed
             })
-            Text(`Image:${this.isCreateImageLoading}`)
-            Image(this.mediaBean.localUrl)
-              .width(30)
-              .height(30)
-              .backgroundColor(Color.Grey)
-              .margin({ right: 200 })
+            // Text(`Image:${this.isCreateImageLoading}`)
+            if (!this.isCurrentSelectedImageSent) {
+              Image(this.mediaBean.localUrl)
+                .width(30)
+                .height(30)
+                .backgroundColor(Color.White)
+                .margin({ right: 200 })
+            }
             Blank()
               .layoutWeight(1)
-            this.iconComponent($r('app.media.icon_conversation'), () => {
-            })
           }
         }
         .width('100%')
