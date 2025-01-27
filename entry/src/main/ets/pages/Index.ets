@@ -22,6 +22,11 @@ import { MediaHelper } from '../helper/MediaHelper';
 import common from '@ohos.app.ability.common';
 import { Log } from '../utils/Log';
 import file from '@ohos.file.fs'; //用于读取普通文件
+import { MessageItem } from '../models/message';
+import { InputWindowDialog } from '../component/inputWindow'
+
+PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
+PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
 
 class ImageType {
   type: string
@@ -40,7 +45,10 @@ struct Index {
   @State modelList: Model[] = []
   @State selectedModel: string = 'gpt-4o-mini' //'gpt-3.5-turbo'
   @State messages: Message[] = [] // todo: Consider to place all the data into database
-  @State messagesWithImage: MessageTxtImg[] = []
+  @StorageLink('currentMessages') messagesWithImage: MessageTxtImg[] = AppStorage.get('currentMessages') ?? []
+  @State currentSavedMessage: MessageItem = new MessageItem(this.messagesWithImage, '')
+  @State isSaved: boolean = false
+  // @State messagesWithImage: MessageTxtImg[] = []
   //Select model list
   @State selectList: SelectModel[] = []
   @State selectIndex: number = 0
@@ -85,10 +93,31 @@ struct Index {
   //edit image
   @State isImageSelected: boolean = false
   @State selectedFileUrl: string = 'file://media/Photo/5/IMG_1737541853_004/IMG_2025122_182913.jpg'
+  //Database
+  // @State messageList: Message[][] = []
+
+  // Custom Dialog
+  @State inputMessage: string = ''
+  inputDialogController: CustomDialogController = new CustomDialogController({
+    builder: InputWindowDialog({
+      inputMessage: $inputMessage,
+      changeInputValue: (val: string) => {
+        this.currentSavedMessage.topic = val
+        this.isSaved = this.currentSavedMessage.isSaved
+      }
+    }),
+    alignment: DialogAlignment.Center
+  })
 
   // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
   aboutToAppear(): void {
-    this.startTypingEffect()
+    if (this.messagesWithImage[0]) {
+      this.isWelcomeStatus = false
+    }
+
+    if (this.isWelcomeStatus) {
+      this.startTypingEffect()
+    }
 
     const source = new chatDataSource()
 
@@ -275,19 +304,37 @@ struct Index {
                   this.selectedModel = text
                 }
               })
-
             Blank()
-
+              .layoutWeight(0.7)
             Row() {
-              Image($r('app.media.icon_history'))
-                .width(40)
-                .margin({right: 10})
-            }
-            .width('200')
-            .justifyContent(FlexAlign.End)
-            .onClick(()=>{
+              Row() {
+                Image(this.isSaved ? $r('app.media.icon_saved') : $r('app.media.icon_save'))
+                  .width(40)
+                  .margin({ right: 10 })
+              }
+              .width(50)
+              .justifyContent(FlexAlign.End)
+              .onClick(() => {
+                this.inputDialogController.open()
+                this.currentSavedMessage.messages = this.messagesWithImage
+                this.currentSavedMessage.topic = this.inputMessage
+              })
 
-            })
+              Row() {
+                Image($r('app.media.icon_history'))
+                  .width(40)
+                  .margin({ right: 10 })
+              }
+              .width(50)
+              .justifyContent(FlexAlign.End)
+              .onClick(() => {
+
+              })
+            }
+            .justifyContent(FlexAlign.End)
+            .borderWidth(1)
+            .layoutWeight(1)
+
           }
           .width('100%')
         }
