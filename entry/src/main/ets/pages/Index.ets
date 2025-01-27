@@ -24,6 +24,7 @@ import { Log } from '../utils/Log';
 import file from '@ohos.file.fs'; //用于读取普通文件
 import { MessageItem } from '../models/message';
 import { InputWindowDialog } from '../component/inputWindow'
+import { ReadyNewChatWindow } from '../component/readyWindow';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -111,6 +112,14 @@ struct Index {
     alignment: DialogAlignment.Center
   })
   @StorageLink('allMessages') allMessages: MessageItem[] = AppStorage.get('allMessages') ?? []
+  readyDialogController: CustomDialogController = new CustomDialogController({
+    builder: ReadyNewChatWindow({
+      yesButtonAction: () => {
+        this.messagesWithImage = []
+      }
+    }),
+    alignment: DialogAlignment.Center
+  })
 
   // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
   aboutToAppear(): void {
@@ -301,8 +310,11 @@ struct Index {
               ListItem() {
                 Row() {
                   Text(message.topic)
+                    .margin({ left: 5 })
                 }
                 .width('100%')
+                .backgroundColor(Color.Orange)
+                .margin({ bottom: 10 })
                 .height(30)
                 .onClick(() => {
                   Log.info('onclicktask', 'clicked')
@@ -343,7 +355,7 @@ struct Index {
                 .width(50)
                 .justifyContent(FlexAlign.End)
                 .onClick(() => {
-                  this.messagesWithImage = []
+                  this.readyDialogController.open()
                 })
 
                 Row() {
@@ -637,7 +649,6 @@ struct Index {
           .width('100%')
           .height(80)
           .borderRadius(10)
-          .borderWidth(1)
           .padding(5)
 
         }

@@ -1,16 +1,15 @@
 import promptAction from '@ohos.promptAction'
 
 @CustomDialog
-export struct InputWindowDialog {
-  @Link inputMessage: string
+export struct ReadyNewChatWindow {
   controller: CustomDialogController
-  changeInputValue!: (val: string) => void
+  yesButtonAction!: () => void
 
   build() {
     Column() {
       Column() {
         Row() {
-          Text('Enter Topic')
+          Text('New Chat')
             .margin(5)
             .fontWeight(FontWeight.Bolder)
         }
@@ -20,30 +19,27 @@ export struct InputWindowDialog {
         .backgroundColor('#fff1e812')
 
         Row() {
-          Text('Please enter the topic of your chat')
+          Text('Do you want create new chat?')
+            .margin(5)
+            .fontWeight(FontWeight.Medium)
+        }
+        .width('100%')
+        .height(60)
+        .justifyContent(FlexAlign.Center)
+
+        Row() {
+          Text('Remember to save your chat before start new chat')
             .margin(5)
             .fontWeight(FontWeight.Regular)
         }
-        .width('100%')
+        .width('85%')
         .height(60)
         .justifyContent(FlexAlign.Center)
-
-
-        Row({ space: 10 }) {
-          TextInput({ text: this.inputMessage, placeholder: 'topic' })
-            .onChange((content: string) => {
-              this.inputMessage = content
-            })
-            .width('90%')
-            .height(50)
-            .margin(10)
-        }
-        .justifyContent(FlexAlign.Center)
-        .width('100%')
-        .height(60)
+        .backgroundColor('#5c000000')
+        .borderRadius(10)
 
         Row({ space: 50 }) {
-          Button('Not Ready')
+          Button('No')
             .onClick(() => {
               this.controller.close()
             })
@@ -53,11 +49,9 @@ export struct InputWindowDialog {
             .backgroundColor('#3b000000')
             .fontWeight(FontWeight.Bold)
 
-          Button('Confirm')
+          Button('Yes')
             .onClick(() => {
-              this.changeInputValue(this.inputMessage)
-              this.inputMessage = ''
-              promptAction.showToast({ message: 'Topic saved!' })
+              this.yesButtonAction()
               this.controller.close()
             })
             .type(ButtonType.Normal)
