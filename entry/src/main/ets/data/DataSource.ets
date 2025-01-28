@@ -3,24 +3,26 @@ import { BusinessError } from '@ohos.base';
 import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
+
 const BASE_URL = "https://api.openai.com"
 
 const getModel = BASE_URL + "/v1/models"
 
 //Replace the token if necessary
-// todo: to be replaced
+// todo: token to be replaced
+
+// todo: Consider to replace api with DeepSeek rather than openai
 const authToken = "your token"
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
-const createImage = BASE_URL +"/v1/images/generations"
+const createImage = BASE_URL + "/v1/images/generations"
 // const model: string = 'gpt-3.5-turbo'
 
-const editImage = BASE_URL +"/v1/images/edits"
+const editImage = BASE_URL + "/v1/images/edits"
 
 
 const contentType: string = 'application/json'
-
 
 
 class chatDataSource {
@@ -107,12 +109,12 @@ class chatDataSource {
             connectTimeout: 30000,
           },
           (err: Error, data: http.HttpResponse) => {
-          if (!err) {
-            resolve(data.responseCode);
-          } else {
-            reject(err);
-          }
-        });
+            if (!err) {
+              resolve(data.responseCode);
+            } else {
+              reject(err);
+            }
+          });
       });
       return response;
     } catch (error) {
@@ -184,8 +186,6 @@ class chatDataSource {
         })
     })
   }
-
-
 }
 
 

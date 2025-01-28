@@ -25,6 +25,8 @@ import file from '@ohos.file.fs'; //用于读取普通文件
 import { MessageItem } from '../models/message';
 import { InputWindowDialog } from '../component/inputWindow'
 import { ReadyNewChatWindow } from '../component/readyWindow';
+import abilityAccessCtrl from '@ohos.abilityAccessCtrl';
+import bundleManager from '@ohos.bundle.bundleManager';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -148,6 +150,35 @@ struct Index {
         console.error('Failed to fetch data: HTTP Code', code);
       }
     })
+  }
+
+  // 检查权限方法
+  async checkPermission() {
+    try {
+      const manager = abilityAccessCtrl.createAtManager() // 创建程序控制管理器
+      // 获取应用信息
+      const buildInfo = bundleManager.
+      getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
+      // 获取该应用是否有录音权限
+      const status = manager.
+      checkAccessTokenSync(buildInfo.appInfo?.accessTokenId, "ohos.permission.MICROPHONE")
+      if (status === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED) {
+        // 没有权限，跳转应用设置
+        const context = getContext() as common.UIAbilityContext
+        context.startAbility({
+          bundleName: 'com.huawei.hmos.settings',
+          abilityName: 'com.huawei.hmos.settings.MainAbility',
+          uri: "application_info_entry",
+          parameters: {
+            pushParams: buildInfo.name
+          }
+        })
+      } else {
+        // 有权限,可以开始录音
+
+      }
+    } catch (error) {
+    }
   }
 
   async handleClick(option: MediaOption) {
@@ -631,9 +662,10 @@ struct Index {
                   this.urlToFile(this.mediaBean.localUrl)
                 }
               })
-              this.iconComponent($r("app.media.icon_record"), () => {
-                // todo: To be developed
-              })
+              // this.iconComponent($r("app.media.icon_record"), () => {
+              //   // todo: To be developed
+              // })
+
               // Text(`Image:${this.isCreateImageLoading}`)
               if (!this.isCurrentSelectedImageSent) {
                 Image(this.mediaBean.localUrl)
