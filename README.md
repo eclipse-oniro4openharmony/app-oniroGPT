@@ -18,14 +18,14 @@ const authToken = "your token" with your token.
 
 
 #### Screenshots
-![Alt text](images/oniroGPT/screenshot_1.jpeg)  
-![Alt text](images/oniroGPT/screenshot_2.jpeg)  
-![Alt text](images/oniroGPT/screenshot_3.jpeg)  
-![Alt text](images/oniroGPT/screenshot_4.jpeg)  
-![Alt text](images/oniroGPT/screenshot_5.jpeg)  
-![Alt text](images/oniroGPT/screenshot_6.jpeg)  
-![Alt text](images/oniroGPT/screenshot_7.jpeg)  
-![Alt text](images/oniroGPT/screenshot_8.jpeg)  
+![Alt text](images/screenshot_1.jpeg)  
+![Alt text](images/screenshot_2.jpeg)  
+![Alt text](images/screenshot_3.jpeg)  
+![Alt text](images/screenshot_4.jpeg)  
+![Alt text](images/screenshot_5.jpeg)  
+![Alt text](images/screenshot_6.jpeg)  
+![Alt text](images/screenshot_7.jpeg)  
+![Alt text](images/screenshot_8.jpeg)  
 
 #### Api with Header and Auth
 Some application's api requires authenication, thus the api request format is a bit different than before.
