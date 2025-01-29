@@ -27,6 +27,7 @@ import { InputWindowDialog } from '../component/inputWindow'
 import { ReadyNewChatWindow } from '../component/readyWindow';
 import abilityAccessCtrl from '@ohos.abilityAccessCtrl';
 import bundleManager from '@ohos.bundle.bundleManager';
+import Storage from '../preference/Storage'
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -122,9 +123,18 @@ struct Index {
     }),
     alignment: DialogAlignment.Center
   })
+  //Preferences
+  private localStorage = new Storage()
+  @State style: string[] = []
+  @State bgColor: string = ''
+  @State txtColor: string = ''
+  @State isBlack: boolean = false
+  //Image generation
+  @State isImageGenerateMode: boolean = false
 
-  // todo: 逻辑上是一开始调用出所有的模型，然后问ai的时候消息应该即时调用对应的消息接口
-  aboutToAppear(): void {
+  async aboutToAppear(): Promise<void> {
+    let temp: string[] = (await this.localStorage.getStyle('style')) as string[]
+
     if (this.messagesWithImage[0]) {
       this.isWelcomeStatus = false
     }
@@ -137,19 +147,38 @@ struct Index {
 
     source.fetchHttpCode().then(async (code) => {
       this.httpCode = code
+      Log.info('Model items code', code)
 
       if (code === 200) {
 
         this.modelList = await source.fetchModels()
+        Log.info('Model items len', this.modelList.length)
 
         this.modelList.forEach((item: Model) => {
           this.selectList.push(new SelectModel(item.id, $r("app.media.icon_oniro")))
+          Log.info('Model items', item.id)
         })
       } else {
         this.isHttpError = true;
         console.error('Failed to fetch data: HTTP Code', code);
       }
     })
+
+    if (temp.length !== 0) {
+      this.bgColor = temp[temp.length-2]
+      this.txtColor = temp[temp.length-1]
+      if (temp[temp.length-2] == '#ff000000') {
+        this.isBlack = true
+      } else if (temp[temp.length-2] == '#ffffffff') {
+        this.isBlack = false
+      }
+    } else {
+      this.isBlack = false
+    }
+  }
+
+  async fetchModels() {
+
   }
 
   // 检查权限方法
@@ -157,17 +186,15 @@ struct Index {
     try {
       const manager = abilityAccessCtrl.createAtManager() // 创建程序控制管理器
       // 获取应用信息
-      const buildInfo = bundleManager.
-      getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
+      const buildInfo = bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
       // 获取该应用是否有录音权限
-      const status = manager.
-      checkAccessTokenSync(buildInfo.appInfo?.accessTokenId, "ohos.permission.MICROPHONE")
+      const status = manager.checkAccessTokenSync(buildInfo.appInfo?.accessTokenId, "ohos.permission.MICROPHONE")
       if (status === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED) {
         // 没有权限，跳转应用设置
         const context = getContext() as common.UIAbilityContext
         context.startAbility({
-          bundleName: 'com.huawei.hmos.settings',
-          abilityName: 'com.huawei.hmos.settings.MainAbility',
+          bundleName: 'com.huawei.ohos.settings',
+          abilityName: 'com.huawei.ohos.settings.MainAbility',
           uri: "application_info_entry",
           parameters: {
             pushParams: buildInfo.name
@@ -342,6 +369,7 @@ struct Index {
                 Row() {
                   Text(message.topic)
                     .margin({ left: 5 })
+                    .fontColor(this.isBlack ? Color.White : Color.Black)
                 }
                 .width('100%')
                 .backgroundColor(Color.Orange)
@@ -361,6 +389,7 @@ struct Index {
         .margin({
           top: 90
         })
+        .backgroundColor(this.isBlack ? '#dd2f2d2d' : '#4dffffff')
 
         Column() {
           // todo: Implement select bar
@@ -375,13 +404,40 @@ struct Index {
                     this.selectedModel = text
                   }
                 })
+                .borderRadius(10)
+                .menuBackgroundColor(Color.Orange)
+                .fontColor(this.isBlack ? this.txtColor : Color.Black)
+                .backgroundColor(this.isBlack ? '#d5221f1f' : '#51e5bcbc')
               Blank()
                 .layoutWeight(0.7)
               Row() {
                 Row() {
-                  Image($r('app.media.icon_newchat'))
+                  Image(this.isBlack == true ? $r('app.media.icon_sun_light') : $r('app.media.icon_sun_dark'))
                     .width(40)
-                    .margin({ right: 10 })
+                }
+                .width(50)
+                .justifyContent(FlexAlign.End)
+                .onClick(() => {
+                  this.isBlack = !this.isBlack
+                  if (this.isBlack == true) {
+                    this.bgColor = "#ff000000"
+                    this.txtColor = "#ffffffff"
+                    this.style.push(this.bgColor)
+                    this.style.push(this.txtColor)
+                    this.localStorage.setStyle('style', this.style)
+                  } else {
+                    this.bgColor = "#ffffffff"
+                    this.txtColor = "#ff000000"
+                    this.style.push(this.bgColor)
+                    this.style.push(this.txtColor)
+                    this.localStorage.setStyle('style', this.style)
+                  }
+                })
+
+                Row() {
+                  Image($r('app.media.icon_new_dark'))
+                    .width(40)
+                    .margin({ top: 6, right: 6 })
                 }
                 .width(50)
                 .justifyContent(FlexAlign.End)
@@ -390,8 +446,8 @@ struct Index {
                 })
 
                 Row() {
-                  Image($r('app.media.icon_save'))
-                    .width(40)
+                  Image($r('app.media.icon_save_dark'))
+                    .width(30)
                     .margin({ right: 10 })
                 }
                 .width(50)
@@ -435,111 +491,72 @@ struct Index {
                 .height('100%')
                 .justifyContent(FlexAlign.Center)
               } else {
-                List() {
-                  // ForEach(this.messages, (item: Message) => {
-                  //   ListItem() {
-                  //     Row({ space: 20 }) {
-                  //       if (item.role == 'user') {
-                  //         Column() {
-                  //           Row() {
-                  //             Text(`image list len: ${this.uploadImageList.length}`)
-                  //             Image(this.uploadImageList[this.currentMessageIndex])
-                  //               .width(200)
-                  //           }
-                  //
-                  //           Row() {
-                  //             Row() {
-                  //               Text((item.content[item.content.length-1] as TextContent).text)
-                  //                 .margin(10)
-                  //             }
-                  //             .borderRadius(10)
-                  //             .borderWidth(1)
-                  //             .margin(10)
-                  //           }
-                  //           .width('100%')
-                  //           .justifyContent(FlexAlign.End)
-                  //         }
-                  //         .width('100%')
-                  //       }
-                  //       else if (item.role == 'assistant') {
-                  //         Row() {
-                  //           Row() {
-                  //             Text((item.content.toString()))
-                  //               .margin(10)
-                  //           }
-                  //           .borderRadius(10)
-                  //           .borderWidth(1)
-                  //           .margin(10)
-                  //           .backgroundColor(Color.Orange)
-                  //         }
-                  //         .width('100%')
-                  //         .justifyContent(FlexAlign.Start)
-                  //       }
-                  //     }
-                  //     .width('100%')
-                  //   }
-                  // })
+                if (this.isImageGenerateMode) {
+                  List() {
+                    ForEach(this.imageList, (item: string) => {
+                      ListItem() {
+                        Row() {
+                          Image(item)
+                            .width('50%')
+                        }
+                        .width('100%')
+                        .justifyContent(FlexAlign.Center)
+                      }
+                    })
+                  }
+                } else {
+                  List() {
+                    ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
+                      ListItem() {
+                        Row({ space: 20 }) {
+                          if (item.message.role == 'user') {
+                            Column() {
+                              Row() {
+                                Image(item.img)
+                                  .width(200)
+                              }
 
-                  ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
-                    ListItem() {
-                      Row({ space: 20 }) {
-                        if (item.message.role == 'user') {
-                          Column() {
-                            Row() {
-                              // Text(`image list len: ${this.uploadImageList.length}`)
-                              Image(item.img)
-                                .width(200)
+                              Row() {
+                                Row() {
+                                  if ((item.message.content[0] as TextContent).text !== '') {
+                                    Text((item.message.content[0] as TextContent).text)
+                                      .margin(10)
+                                      .fontColor(this.txtColor)
+                                  }
+                                }
+                                .borderRadius(10)
+                                .borderWidth(1)
+                                .borderColor(this.txtColor)
+                                .margin(10)
+                              }
+                              .width('100%')
+                              .justifyContent(FlexAlign.End)
                             }
-
+                            .width('100%')
+                          }
+                          else if (item.message.role == 'assistant') {
                             Row() {
                               Row() {
-                                if ((item.message.content[0] as TextContent).text !== '') {
-                                  Text((item.message.content[0] as TextContent).text)
-                                    .margin(10)
-                                }
+                                Text((item.message.content.toString()))
+                                  .margin(10)
                               }
                               .borderRadius(10)
                               .borderWidth(1)
                               .margin(10)
+                              .backgroundColor(Color.Orange)
                             }
                             .width('100%')
-                            .justifyContent(FlexAlign.End)
+                            .justifyContent(FlexAlign.Start)
                           }
-                          .width('100%')
                         }
-                        else if (item.message.role == 'assistant') {
-                          Row() {
-                            Row() {
-                              Text((item.message.content.toString()))
-                                .margin(10)
-                            }
-                            .borderRadius(10)
-                            .borderWidth(1)
-                            .margin(10)
-                            .backgroundColor(Color.Orange)
-                          }
-                          .width('100%')
-                          .justifyContent(FlexAlign.Start)
-                        }
+                        .width('100%')
                       }
-                      .width('100%')
-                    }
-                  })
+                    })
+
+                  }
 
                 }
 
-                List() {
-                  ForEach(this.imageList, (item: string) => {
-                    ListItem() {
-                      Row() {
-                        Image(item)
-                          .width('50%')
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.Start)
-                    }
-                  })
-                }
               }
             }
           }.width('100%')
@@ -592,8 +609,14 @@ struct Index {
                   }
                 })
                 .width('80%')
-              Button('Send')
-                .type(ButtonType.Normal)
+                .placeholderColor(this.isBlack ? '#b0ffffff' : '#630e0d0d')
+                .fontColor(this.isBlack ? Color.White : Color.Black)
+                .backgroundColor(this.isBlack ? '#c8181818' : Color.White)
+                .borderWidth(2)
+                .borderColor(this.isBlack ? '#46ffffff' : '#65100f0f')
+
+              Image($r('app.media.icon_send'))
+                .width(25)
                 .borderRadius(3)
                 .onClick(() => {
                   this.isCurrentSelectedImageSent = true
@@ -648,12 +671,14 @@ struct Index {
             // Row of many functional labels
             // todo: Implement onClick methods of each icon
             Row({ space: 10 }) {
-              this.iconComponent($r('app.media.icon_image'), () => {
+              this.iconComponent($r('app.media.icon_ai_dark'), () => {
+                this.isImageGenerateMode = true
                 this.isWelcomeStatus = false
                 this.isImageIconClick = !this.isImageIconClick
                 this.createImageTextIndex = 0
               })
-              this.iconComponent($r('app.media.icon_uploadImg'), () => {
+              this.iconComponent($r('app.media.icon_upload'), () => {
+                this.isImageGenerateMode = false
                 this.isCurrentSelectedImageSent = false
                 this.handleClick(MediaOption.Picture)
                 if (this.mediaBean.localUrl) {
@@ -671,7 +696,7 @@ struct Index {
                 Image(this.mediaBean.localUrl)
                   .width(30)
                   .height(30)
-                  .backgroundColor(Color.White)
+                  .backgroundColor(this.bgColor)
                   .margin({ right: 200 })
               }
               Blank()
@@ -689,9 +714,9 @@ struct Index {
       }
       .controlButton({
         icons: {
-          hidden: $r('app.media.icon_history'),
-          shown: $r('app.media.icon_history'),
-          switching: $r('app.media.icon_history')
+          hidden: $r('app.media.icon_history_light'),
+          shown: $r('app.media.icon_history_light'),
+          switching: $r('app.media.icon_history_light')
         },
         width: 32,
         height: 32
@@ -700,6 +725,7 @@ struct Index {
       .minSideBarWidth(50)
       .maxSideBarWidth('100%')
     }
+    .backgroundColor(this.bgColor)
     .width('100%')
   }
 }

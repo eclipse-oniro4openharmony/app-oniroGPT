@@ -4,6 +4,12 @@ import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { KeyboardAvoidMode } from '@ohos.arkui.UIContext';
+import preferences from '@ohos.data.preferences';
+import util from '@ohos.util';
+import { Log } from '../utils/Log';
+
+let dataPreferences: preferences.Preferences | null = null;
+let Tag: string = 'onWindowStageCreate'
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -15,6 +21,22 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    //获取Preferences实例。
+    let options: preferences.Options = {
+      name: 'myStore'
+    };
+    dataPreferences = preferences.getPreferencesSync(this.context, options);
+
+    if (dataPreferences.hasSync('startup')) {
+      Log.info(Tag, "The key 'startup' is contained.");
+    } else {
+      Log.info(Tag, "The key 'startup' does not contain.");
+      // 此处以此键值对不存在时写入数据为例
+      dataPreferences.putSync('startup', 'auto');
+      // 当字符串有特殊字符时，需要将字符串转为Uint8Array类型再存储，长度均不超过16 * 1024 * 1024个字节。
+      let uInt8Array1 = new util.TextEncoder().encodeInto("~！@#￥%……&*（）——+？");
+      dataPreferences.putSync('uInt8', uInt8Array1);
+    }
     // Main window is created, set main page for this ability
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
