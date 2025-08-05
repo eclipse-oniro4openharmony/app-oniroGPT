@@ -1,5 +1,3 @@
-import promptAction from '@ohos.promptAction'
-
 @CustomDialog
 export struct InputWindowDialog {
   @Link inputMessage: string
@@ -57,7 +55,9 @@ export struct InputWindowDialog {
             .onClick(() => {
               this.changeInputValue(this.inputMessage)
               this.inputMessage = ''
-              promptAction.showToast({ message: 'Topic saved!' })
+              this.getUIContext().getPromptAction().showToast({
+                message: 'Topic saved!'
+              })
               this.controller.close()
             })
             .type(ButtonType.Normal)

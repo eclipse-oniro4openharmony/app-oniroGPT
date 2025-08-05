@@ -1,7 +1,7 @@
 /**
  * String Utilities for ArkTS
  */
-import util from '@ohos.util';
+import { util } from "@kit.ArkTS";
 
 class StringUtils {
   /**
@@ -11,7 +11,7 @@ class StringUtils {
    * @returns True if the string is null, undefined, or empty; otherwise, false
    */
   static isNullOrEmpty(str: string | undefined | null): boolean {
-    return!str || str.trim().length === 0;
+    return !str || str.trim().length === 0;
   }
 
   /**
@@ -21,7 +21,7 @@ class StringUtils {
    * @returns True if the string is not null, undefined, or empty; otherwise, false
    */
   static isNotNullOrEmpty(str: string | undefined | null): boolean {
-    return!!str && str.trim().length > 0;
+    return !!str && str.trim().length > 0;
   }
 
   /**
@@ -30,7 +30,9 @@ class StringUtils {
    * @returns
    */
   string2Uint8Array1(value: string): Uint8Array {
-    if (!value) return null;
+    if (!value) {
+      return null;
+    }
     //
     let textEncoder = new util.TextEncoder();
     //获取点流并发出 UTF-8 字节流 TextEncoder 的所有实例仅支持 UTF-8 编码
@@ -44,8 +46,12 @@ class StringUtils {
    * @returns 它返回一个包含读取和写入的两个属性的对象
    */
   string2Uint8Array2(value: string, dest: Uint8Array) {
-    if (!value) return null;
-    if (!dest) dest = new Uint8Array(value.length);
+    if (!value) {
+      return null;
+    }
+    if (!dest) {
+      dest = new Uint8Array(value.length);
+    }
     let textEncoder = new util.TextEncoder();
     //read：它是一个数值，指定转换为 UTF-8 的字符串字符数。如果 uint8Array 没有足够的空间，这可能小于 src.length(length of source 字符串)。
     //dest：也是一个数值，指定存储在目标 Uint8Array 对象 Array 中的 UTF-8 unicode 的数量。它总是等于阅读。
@@ -61,7 +67,7 @@ class StringUtils {
    */
   uint8Array2String(input: Uint8Array) {
     let textDecoder = util.TextDecoder.create("utf-8", { ignoreBOM: true })
-    return textDecoder.decodeWithStream(input, { stream: false });
+    return textDecoder.decodeToString(input, { stream: false });
   }
 
   /**

@@ -1,6 +1,4 @@
-
-import bundleManager from '@ohos.bundle.bundleManager';
-import abilityAccessCtrl, { Permissions } from '@ohos.abilityAccessCtrl';
+import { abilityAccessCtrl, bundleManager, Permissions } from "@kit.AbilityKit";
 
 class PermissionHandler {
 

@@ -1,5 +1,3 @@
-import promptAction from '@ohos.promptAction'
-
 @CustomDialog
 export struct ReadyNewChatWindow {
   controller: CustomDialogController

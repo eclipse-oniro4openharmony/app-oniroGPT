@@ -1,5 +1,4 @@
-import file from '@ohos.file.fs'; //用于读取普通文件
-
+import file from '@ohos.file.fs';
 // Image Generation
 class HeaderForImage {
   Authorization: string

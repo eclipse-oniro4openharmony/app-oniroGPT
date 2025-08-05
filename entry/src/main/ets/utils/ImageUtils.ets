@@ -1,7 +1,5 @@
 import file from '@ohos.file.fs'; //用于读取普通文件
-import util from '@ohos.util';
-
-let base64 = new util.Base64Helper();
+import { util } from '@kit.ArkTS';
 
 async function convertToBase64(filePath: string): Promise<string> {
   try {

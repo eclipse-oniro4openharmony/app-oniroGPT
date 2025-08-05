@@ -1,4 +1,3 @@
-// Model 数据类
 class Model {
   id: string // 模型 ID
   object: string // 模型类型

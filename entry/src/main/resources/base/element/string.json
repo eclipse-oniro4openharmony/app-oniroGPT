@@ -15,6 +15,22 @@
     {
       "name": "appName",
       "value": "oniroGPT"
+    },
+    {
+      "name": "permission_reason_readmedia",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_readimagevideo",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_writeimagevideo",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_writemedia",
+      "value": ""
     }
   ]
 }

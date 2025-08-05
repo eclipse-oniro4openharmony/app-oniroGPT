@@ -1,7 +1,7 @@
-import preferences from '@ohos.data.preferences';
-import common from '@ohos.app.ability.common';
-import hilog from '@ohos.hilog';
-import { BusinessError } from '@ohos.base';
+import { common } from '@kit.AbilityKit';
+import { preferences } from '@kit.ArkData';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { BusinessError } from '@kit.BasicServicesKit'
 
 
 class Storage {

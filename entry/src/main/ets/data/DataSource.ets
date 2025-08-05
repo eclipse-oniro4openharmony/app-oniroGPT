@@ -1,6 +1,6 @@
 import http from '@ohos.net.http';
 import { BusinessError } from '@ohos.base';
-import { ChatBodyParams, DataResponse, HeaderForModel, Message, Model, Body, } from '../models/models';
+import { DataResponse, HeaderForModel, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
 

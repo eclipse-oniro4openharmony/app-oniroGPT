@@ -1,11 +1,9 @@
 import file from '@ohos.file.fs'; //用于读取普通文件
 import util from '@ohos.util';
 import { Log } from './Log';
-import { BusinessError } from '@ohos.base';
 import common from '@ohos.app.ability.common';
 import { StringUtils } from './StringUtils';
 
-let base64 = new util.Base64Helper();
 let context = getContext(this) as common.UIAbilityContext;
 let pathDir = context.filesDir
 let stringUtils = new StringUtils()

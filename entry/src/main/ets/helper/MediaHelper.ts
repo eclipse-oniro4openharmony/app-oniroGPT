@@ -1,19 +1,14 @@
-import common from '@ohos.app.ability.common';
 import { MediaBean } from '../bean/MediaBean';
 import { Log } from '../utils/Log';
-import picker from '@ohos.file.picker';
-import wantConstant from '@ohos.ability.wantConstant';
 import { StringUtils } from '../utils/StringUtils';
-import mediaLibrary from '@ohos.multimedia.mediaLibrary';
-import photoAccessHelper from '@ohos.file.photoAccessHelper';
-import dataSharePredicates from '@ohos.data.dataSharePredicates';
-import fs from '@ohos.file.fs'; //用于读取普通文件
-import fileUri from '@ohos.file.fileuri';
-import util from '@ohos.util';
-import image from '@ohos.multimedia.image';
-import { BusinessError } from '@ohos.base';
-import buffer from '@ohos.buffer';
-
+import fs from '@ohos.file.fs';
+import { common } from '@kit.AbilityKit';
+import { image } from '@kit.ImageKit';
+import { picker } from '@kit.CoreFileKit';
+import { buffer } from '@kit.ArkTS';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { dataSharePredicates } from '@kit.ArkData';
+import { BusinessError } from '@kit.BasicServicesKit';
 
 export class MediaHelper {
   private readonly TAG: string = 'MediaHelper';
@@ -43,12 +38,12 @@ export class MediaHelper {
   public selectPicture(): Promise<MediaBean> {
 
     try {
-      let photoSelectOptions = new picker.PhotoSelectOptions();
-      photoSelectOptions.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
+      let photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+      photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
       photoSelectOptions.maxSelectNumber = 1;
-      let photoPicker = new picker.PhotoViewPicker();
+      let photoPicker = new photoAccessHelper.PhotoViewPicker();
       return photoPicker.select(photoSelectOptions)
-        .then((photoSelectResult: picker.PhotoSelectResult) => {
+        .then((photoSelectResult: photoAccessHelper.PhotoSelectResult) => {
           Log.info(this.TAG, 'PhotoViewPicker.select successfully, PhotoSelectResult uri: ' + JSON.stringify(photoSelectResult));
 
           if (photoSelectResult && photoSelectResult.photoUris && photoSelectResult.photoUris.length > 0) {
@@ -106,7 +101,6 @@ export class MediaHelper {
 
   public checkFileExist() {
     let testPath = this.uri
-    const openedFile = fs.openSync(testPath, fs.OpenMode.CREATE)
     if (fs.accessSync(testPath)) {
       console.info('Fileq exists:', testPath);
     } else {
@@ -209,8 +203,7 @@ export class MediaHelper {
 
       const imagePackerApi: image.ImagePacker = image.createImagePacker();
       let packOpts: image.PackingOption = { format: 'image/jpeg', quality: 100 };
-
-      const data: ArrayBuffer = await imagePackerApi.packing(this.profileImage, packOpts);
+      const data: ArrayBuffer = await imagePackerApi.packToData(this.profileImage, packOpts);
       let buf: buffer.Buffer = buffer.from(data);
       this.base64 = 'data:image/jpeg;base64,' + buf.toString('base64', 0, buf.length);
       console.log('Base64 Encoded Image:', this.base64);
@@ -331,9 +324,6 @@ export class MediaHelper {
     }
     let fileList: Array<photoAccessHelper.PhotoAsset> = [];
 
-    const parts: string[] = uri.split('/');
-    const id: string = parts.length > 0 ? parts[parts.length - 1] : '-1';
-
     try {
 
       let media = photoAccessHelper.getPhotoAccessHelper(this.mContext);
@@ -368,17 +358,5 @@ export class MediaHelper {
       mediaBean.fileType = fileInfoObj.photoType.toString()
 
     }
-  }
-}
-
-class Params {
-  mode: string
-  moduleName: string = ''
-  resourceUri: string
-
-  constructor(mode: string, moduleName: string, resourceUri: string) {
-    this.mode = mode
-    this.moduleName = moduleName
-    this.resourceUri = resourceUri
   }
 }

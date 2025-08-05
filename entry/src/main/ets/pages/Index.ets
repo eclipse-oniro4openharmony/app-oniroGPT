@@ -1,33 +1,27 @@
 import { chatDataSource } from '../data/DataSource'
-import { checkFileExist, convertToBase64, readFileAsUint8Array, testReadUrl } from '../utils/fileUtils'
 import {
   Content,
   Body,
-  ChatBodyParams,
   DataResponse,
-  HeaderForModel,
   Message,
   Model,
   TextContent,
   ImageContent,
-  imageExist,
   MessageTxtImg
 } from '../models/models';
-import { BusinessError, Callback } from '@ohos.base';
 import { ChatResponse, Choice } from '../models/chat';
 import { SelectModel } from '../models/index'
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams } from '../models/image';
 import { MediaBean } from '../bean/MediaBean';
 import { MediaHelper } from '../helper/MediaHelper';
-import common from '@ohos.app.ability.common';
 import { Log } from '../utils/Log';
-import file from '@ohos.file.fs'; //用于读取普通文件
+import file from '@ohos.file.fs';
 import { MessageItem } from '../models/message';
 import { InputWindowDialog } from '../component/inputWindow'
 import { ReadyNewChatWindow } from '../component/readyWindow';
-import abilityAccessCtrl from '@ohos.abilityAccessCtrl';
-import bundleManager from '@ohos.bundle.bundleManager';
 import Storage from '../preference/Storage'
+import { abilityAccessCtrl, bundleManager, common } from '@kit.AbilityKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -69,8 +63,9 @@ struct Index {
   private role: string = 'user'
   @State newMessage: Message = new Message('', [])
   @State payload: Body = new Body(this.selectedModel, this.messages)
-  @State createImageBody: CreateImageBodyParams = new CreateImageBodyParams('dall-e-3', 'A colorful sunset over the mountains',
-    1, '1024x1024')
+  @State createImageBody: CreateImageBodyParams =
+    new CreateImageBodyParams('dall-e-3', 'A colorful sunset over the mountains',
+      1, '1024x1024')
   @State repliedMessage: Message = new Message('assistant', [])
   //Initial app page status
   @State isWelcomeStatus: boolean = true
@@ -91,8 +86,9 @@ struct Index {
   @State uploadImageList: string[] = []
   @State currentMessageIndex: number = -1
   @State isCurrentSelectedImageSent: boolean = false
+  private context: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
   // Media
-  private mediaHelper: MediaHelper = new MediaHelper(getContext());
+  private mediaHelper: MediaHelper = new MediaHelper(this.context);
   @State mediaBean: MediaBean = new MediaBean();
   //edit image
   @State isImageSelected: boolean = false
@@ -186,12 +182,13 @@ struct Index {
     try {
       const manager = abilityAccessCtrl.createAtManager() // 创建程序控制管理器
       // 获取应用信息
-      const buildInfo = bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
+      const buildInfo =
+        bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
       // 获取该应用是否有录音权限
       const status = manager.checkAccessTokenSync(buildInfo.appInfo?.accessTokenId, "ohos.permission.MICROPHONE")
       if (status === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED) {
         // 没有权限，跳转应用设置
-        const context = getContext() as common.UIAbilityContext
+        const context = this.getUIContext().getHostContext() as common.UIAbilityContext
         context.startAbility({
           bundleName: 'com.huawei.ohos.settings',
           abilityName: 'com.huawei.ohos.settings.MainAbility',
@@ -218,7 +215,7 @@ struct Index {
         mediaBean = await this.mediaHelper.selectFile();
         break;
       case MediaOption.TakePhoto:
-        mediaBean = await this.mediaHelper.takePhoto(getContext() as common.UIAbilityContext);
+        mediaBean = await this.mediaHelper.takePhoto(this.context);
         break;
       default:
         break;
@@ -533,8 +530,7 @@ struct Index {
                               .justifyContent(FlexAlign.End)
                             }
                             .width('100%')
-                          }
-                          else if (item.message.role == 'assistant') {
+                          } else if (item.message.role == 'assistant') {
                             Row() {
                               Row() {
                                 Text((item.message.content.toString()))
@@ -588,8 +584,7 @@ struct Index {
                       this.createImageBody.prompt = this.imageGenerateDescription
                       this.startImageGenerateEffect()
                       this.callCreateImage(this.createImageBody)
-                    }
-                    else {
+                    } else {
                       this.currentTextContent.text = this.newMessageContent
                       this.currentContent.push(this.currentTextContent)
                       if (this.mediaBean.localUrl) {
