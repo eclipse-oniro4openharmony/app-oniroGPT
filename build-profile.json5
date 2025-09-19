@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.cer",
+          "certpath": "C:\\Users\\alf13\\.ohos\\config\\default_app-oniroGPT_VqQ-LWy0vD-Js5WvypkorKCQPvgmObJfcemt_9osawc=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B1E8D729018D9896F00B8D0C13E68DE671BD2234B08726BE492842E1BABCFA59204D40EB5C5F67A",
-          "profile": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.p7b",
+          "keyPassword": "0000001AA4E2F86EB70EAAF85D79BE4948F4D9AA1EA46F13CCF210EBC9198698793BF5D0582834A7DAC0",
+          "profile": "C:\\Users\\alf13\\.ohos\\config\\default_app-oniroGPT_VqQ-LWy0vD-Js5WvypkorKCQPvgmObJfcemt_9osawc=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.p12",
-          "storePassword": "0000001B25482A993F1764745A4FF8373464274847333B1312A6FDE654D01A411CB4D8B6712127521481BD"
+          "storeFile": "C:\\Users\\alf13\\.ohos\\config\\default_app-oniroGPT_VqQ-LWy0vD-Js5WvypkorKCQPvgmObJfcemt_9osawc=.p12",
+          "storePassword": "0000001A26270AA42342DE046C9F9B30E2AA08A8EF3D41F62DA7FD7468D0E7983C2B83543059C4465383"
         }
       }
     ],
