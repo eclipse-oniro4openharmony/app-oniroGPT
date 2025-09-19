@@ -1,14 +1,27 @@
 {
   "app": {
     "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B1E8D729018D9896F00B8D0C13E68DE671BD2234B08726BE492842E1BABCFA59204D40EB5C5F67A",
+          "profile": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\chens\\.ohos\\config\\default_app-oniroGPT_a13HClaTCxYFVbZbnlq4kP8Zp_07QYP7aPO-EwFbGdk=.p12",
+          "storePassword": "0000001B25482A993F1764745A4FF8373464274847333B1312A6FDE654D01A411CB4D8B6712127521481BD"
+        }
+      }
     ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
-        "compileSdkVersion": 18,
-        "compatibleSdkVersion": 18,
-        "runtimeOS": "OpenHarmony",
+        "targetSdkVersion": "5.1.0(18)",
+        "compatibleSdkVersion": "5.0.1(13)",
+        "runtimeOS": "HarmonyOS"
       }
     ],
     "buildModeSet": [

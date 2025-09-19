@@ -3,6 +3,7 @@ import { BusinessError } from '@ohos.base';
 import { DataResponse, HeaderForModel, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
+import { CreateTranscriptionParams, CreateTranscriptionResponse, HeaderForAudio } from '../models/audio';
 
 const BASE_URL = "https://api.openai.com"
 
@@ -12,7 +13,7 @@ const getModel = BASE_URL + "/v1/models"
 // todo: token to be replaced
 
 // todo: Consider to replace api with DeepSeek rather than openai
-const authToken = "your token"
+const authToken = ""
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
@@ -21,6 +22,7 @@ const createImage = BASE_URL + "/v1/images/generations"
 
 const editImage = BASE_URL + "/v1/images/edits"
 
+const createTranscription = BASE_URL + "/v1/audio/transcriptions"
 
 const contentType: string = 'application/json'
 
@@ -186,6 +188,40 @@ class chatDataSource {
         })
     })
   }
+
+// todo: Implement httpPost with curl -F like ability
+  async createTranscriptions(payload: CreateTranscriptionParams): Promise<CreateTranscriptionResponse> {
+    return new Promise<CreateTranscriptionResponse>((resolve, reject) => {
+      let httpRequest = http.createHttp()
+      httpRequest.request(createTranscription,
+        {
+          method: http.RequestMethod.POST,
+          header: new HeaderForAudio(authToken, "multipart/form-data"),
+          extraData: JSON.stringify(payload),
+          readTimeout: 30000,
+          connectTimeout: 30000
+        },
+
+        (err: Error, data: http.HttpResponse) => {
+          if (!err) {
+            try {
+              let responseData: CreateTranscriptionResponse = JSON.parse(data.result as string)
+              resolve(responseData)
+            } catch (error) {
+              reject('Failed to parse response data')
+            }
+            finally {
+              httpRequest.off('headersReceive')
+              httpRequest.destroy()
+            }
+          } else {
+            reject('Error: ' + err)
+          }
+        })
+    })
+  }
+
+
 }
 
 

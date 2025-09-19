@@ -22,6 +22,8 @@ import { ReadyNewChatWindow } from '../component/readyWindow';
 import Storage from '../preference/Storage'
 import { abilityAccessCtrl, bundleManager, common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { CreateTranscriptionParams, CreateTranscriptionResponse } from '../models/audio';
+import { UIContext } from '@kit.ArkUI';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -127,6 +129,22 @@ struct Index {
   @State isBlack: boolean = false
   //Image generation
   @State isImageGenerateMode: boolean = false
+  //Audio transcription
+  @State createTranscriptionBody: CreateTranscriptionParams =
+    new CreateTranscriptionParams(this.getAudioFile('test'), 'gpt-4o-transcribe')
+
+  getAudioFile(fileName: string): file.File {
+    let filePath: string = this.context.filesDir + '/' + fileName
+    const f = file.openSync(filePath, file.OpenMode.READ_ONLY)
+    try {
+      const buffer = new ArrayBuffer(4096)
+      const bytesRead = file.readSync(f.fd, buffer, { length: buffer.byteLength })
+      Log.info('Audio file content:', buffer.byteLength)
+    } catch (error) {
+      Log.error(`Read file failed: ${error}`)
+    }
+    return f
+  }
 
   async aboutToAppear(): Promise<void> {
     let temp: string[] = (await this.localStorage.getStyle('style')) as string[]
@@ -171,10 +189,6 @@ struct Index {
     } else {
       this.isBlack = false
     }
-  }
-
-  async fetchModels() {
-
   }
 
   // 检查权限方法
@@ -321,6 +335,34 @@ struct Index {
     })
   }
 
+  callCreateTranscription(payload: CreateTranscriptionParams) {
+    const source = new chatDataSource()
+    Log.info('Audio response', 'enter CreateTranscriptionParams')
+    source.fetchHttpCode().then(async (code) => {
+      this.httpCode = code
+      Log.info('Audio response', JSON.stringify(payload, null, 2))
+
+      if (code === 200) {
+
+        const reply: CreateTranscriptionResponse = await source.createTranscriptions(payload).catch(
+          (err: BusinessError) => {
+            Log.error('Error during callChatApi:', err)
+          }
+        ) as CreateTranscriptionResponse
+        Log.info('Audio response', JSON.stringify(reply, null, 2))
+        if (reply) {
+          Log.info('Audio response1', reply.text.toString())
+          Log.info('Audio response2', reply.usage.toString())
+          Log.info('Audio response3', reply.output_tokens.toString())
+          Log.info('Audio response4', reply.total_tokens.toString())
+        }
+      } else {
+        this.isHttpError = true;
+        console.error('Failed to fetch data: HTTP Code', code);
+      }
+    })
+  }
+
   async urlToFile(filePath: string) {
     let f = await file.open(filePath);
     let editPayload: EditImageBodyParams = new EditImageBodyParams(f, 'Modify it')
@@ -346,6 +388,11 @@ struct Index {
         this.createImageTextIndex++;
       }
     }, 50)
+  }
+
+  async getAudioFileFromResourceManager() {
+    let context = new UIContext().getHostContext() as common.UIAbilityContext
+    let fd = await context.resourceManager.getRawFd('test.mp3')
   }
 
   // builder
@@ -430,6 +477,13 @@ struct Index {
                     this.localStorage.setStyle('style', this.style)
                   }
                 })
+
+                Row() {
+                  Button('Audio')
+                    .onClick(() => {
+                      this.callCreateTranscription(this.createTranscriptionBody)
+                    })
+                }
 
                 Row() {
                   Image($r('app.media.icon_new_dark'))
