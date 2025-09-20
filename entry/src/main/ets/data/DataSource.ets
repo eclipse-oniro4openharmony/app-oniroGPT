@@ -5,6 +5,7 @@ import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
 import { CreateTranscriptionParams, CreateTranscriptionResponse, HeaderForAudio } from '../models/audio';
 import { Log } from '../utils/Log';
+import fs from "@ohos.file.fs"
 
 const BASE_URL = "https://api.openai.com"
 
@@ -14,7 +15,7 @@ const getModel = BASE_URL + "/v1/models"
 // todo: token to be replaced
 
 // todo: Consider to replace api with DeepSeek rather than openai
-const authToken =  ""
+const authToken = ""
 
 const makeChat = BASE_URL + "/v1/chat/completions"
 
@@ -26,6 +27,19 @@ const editImage = BASE_URL + "/v1/images/edits"
 const createTranscription = BASE_URL + "/v1/audio/transcriptions"
 
 const contentType: string = 'application/json'
+
+class GetFileBytesAndMetaResponse {
+  fileName: string;
+  mime: string;
+  bytes: Uint8Array;
+
+  constructor(fileName: string, mime: string, bytes: Uint8Array) {
+    this.fileName = fileName
+    this.mime = mime
+    this.bytes = bytes
+  }
+}
+;
 
 interface MultipartFileField {
   fieldName: 'file';
@@ -61,8 +75,7 @@ class chatDataSource {
               resolve(responseData.data)
             } catch (error) {
               reject('Failed to parse response data')
-            }
-            finally {
+            } finally {
               httpRequest.off('headersReceive');
               httpRequest.destroy();
             }
@@ -93,8 +106,7 @@ class chatDataSource {
               resolve(responseData)
             } catch (error) {
               reject('Failed to parse response data')
-            }
-            finally {
+            } finally {
               httpRequest.off('headersReceive')
               httpRequest.destroy()
             }
@@ -152,8 +164,7 @@ class chatDataSource {
               resolve(responseData)
             } catch (error) {
               reject('Failed to parse response data')
-            }
-            finally {
+            } finally {
               httpRequest.off('headersReceive')
               httpRequest.destroy()
             }
@@ -184,8 +195,7 @@ class chatDataSource {
               resolve(responseData)
             } catch (error) {
               reject('Failed to parse response data')
-            }
-            finally {
+            } finally {
               httpRequest.off('headersReceive')
               httpRequest.destroy()
             }
@@ -196,48 +206,199 @@ class chatDataSource {
     })
   }
 
-// todo: Implement httpPost with curl -F like ability
+  // 读取 file.File 或 路径，返回文件名/字节/MIME
+  private _getFileBytesAndMeta(f: fs.File | string): GetFileBytesAndMetaResponse {
+    if (typeof f === 'string') {
+      const filename: string = f.substring(f.lastIndexOf('/') + 1) || 'audio.wav';
+      const bytes: Uint8Array = this._readAllBytesFromPath(f); // statSync(path) + 读满
+      const mime: string = this._mimeFromName(filename);
+      let m: GetFileBytesAndMetaResponse = new GetFileBytesAndMetaResponse(filename, mime, bytes)
+      return m;
+    } else {
+      const bytes: Uint8Array = this._readAllBytesFromFd(f.fd); // 分块循环直到 0
+      // 如果拿不到真实文件名，就给个合理缺省
+      const filename: string = 'audio.wav';
+      const mime: string = 'audio/wav';
+      let m: GetFileBytesAndMetaResponse = new GetFileBytesAndMetaResponse(filename, mime, bytes)
+      return m;
+    }
+  }
+
+  private _readAllBytes(path: string): Uint8Array {
+    const st = fs.statSync(path);
+    const ab = new ArrayBuffer(st.size);
+    const f = fs.openSync(path, fs.OpenMode.READ_ONLY);
+    let off = 0;
+    while (off < st.size) {
+      const n = fs.readSync(f.fd, ab, { offset: off, length: st.size - off });
+      if (n <= 0) {
+        break;
+      }
+      off += n;
+    }
+    fs.closeSync(f.fd);
+    return new Uint8Array(ab, 0, off);
+  }
+
+  // 路径读取（用 statSync 拿大小一次分配）
+  private _readAllBytesFromPath(path: string): Uint8Array {
+    const st = fs.statSync(path);
+    const ab = new ArrayBuffer(st.size);
+    const fh = fs.openSync(path, fs.OpenMode.READ_ONLY);
+    let off = 0;
+    while (off < st.size) {
+      const n = fs.readSync(fh.fd, ab, { offset: off, length: st.size - off });
+      if (n <= 0) {
+        break;
+      }
+      off += n;
+    }
+    fs.closeSync(fh.fd);
+    return new Uint8Array(ab, 0, off);
+  }
+
+  // 基于 fd 的分块读取（不依赖文件大小，也不需要 fstatSync）
+  private _readAllBytesFromFd(fd: number): Uint8Array {
+    const CHUNK = 64 * 1024;
+    const chunks: Uint8Array[] = [];
+    let offset = 0;
+    for (;; ) {
+      const buf = new ArrayBuffer(CHUNK);
+      const n = fs.readSync(fd, buf, { offset, length: CHUNK });
+      if (n <= 0) {
+        break;
+      }
+      chunks.push(new Uint8Array(buf, 0, n));
+      offset += n;
+    }
+    let total = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      total += chunks[i].length;
+    }
+    const out = new Uint8Array(total);
+    let pos = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      out.set(chunks[i], pos);
+      pos += chunks[i].length;
+    }
+    return out;
+  }
+
+  // todo: Implement httpPost with curl -F like ability
   async createTranscriptions(payload: CreateTranscriptionParams): Promise<CreateTranscriptionResponse> {
+    // 1) 读取文件字节 + 文件名/MIME
+    const meta = this._getFileBytesAndMeta(payload.file); // { filename, bytes, mime }
 
+    // 2) 文本字段 -> 键值对数组（避免 ArkTS 索引签名/unknown）
+    const textPairs: Array<[string, string]> = [['model', payload.model]];
+    // 如果你的 CreateTranscriptionParams 里还支持这些字段，可按需追加
+    // if (payload.language)        textPairs.push(['language', payload.language]);
+    // if (payload.prompt)          textPairs.push(['prompt', payload.prompt]);
+    // if (payload.response_format) textPairs.push(['response_format', payload.response_format]);
+    // if (typeof payload.temperature === 'number') textPairs.push(['temperature', String(payload.temperature)]);
 
+    // 3) 组装 multipart/form-data
+    const boundary: string = '----ohosFormBoundary' + Math.random().toString(16).slice(2);
+    const body: Uint8Array = this._buildMultipart(
+      boundary,
+      textPairs,
+      {
+        fieldName: 'file',
+        filename: meta.fileName,
+        mime: meta.mime,
+        content: meta.bytes
+      }
+    );
+    // 4) 发送 HTTP（⚠️ 此处不要再用 HeaderForAudio；要把 boundary 拼进 Content-Type）
+    const httpRequest = http.createHttp();
     return new Promise<CreateTranscriptionResponse>((resolve, reject) => {
-      let httpRequest = http.createHttp()
-      httpRequest.request(createTranscription,
+      httpRequest.request(
+        createTranscription,
         {
           method: http.RequestMethod.POST,
-          header: new HeaderForAudio(authToken, "multipart/form-data"),
-          extraData: JSON.stringify(payload),
-          readTimeout: 30000,
+          header: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Accept': 'application/json'
+          },
+          extraData: body.buffer, // 关键：二进制，不是 JSON
+          expectDataType: http.HttpDataType.STRING,
+          readTimeout: 60000,
           connectTimeout: 30000
         },
-
         (err: Error, data: http.HttpResponse) => {
-          if (!err) {
+          try {
+            if (err) {
+              return reject(err);
+            }
+            // 2xx 返回
+            const text = (data.result ?? '') as string;
+            const json = JSON.parse(text) as CreateTranscriptionResponse;
+            resolve(json);
+          } catch (e) {
+            reject(e);
+          } finally {
             try {
-              let responseData: CreateTranscriptionResponse = JSON.parse(data.result as string)
-              resolve(responseData)
-              Log.info('Transcription', JSON.stringify(responseData, null, 2))
-            } catch (error) {
-              reject('Failed to parse response data')
+              httpRequest.off('headersReceive');
+            } catch {
             }
-            finally {
-              httpRequest.off('headersReceive')
-              httpRequest.destroy()
+            try {
+              httpRequest.destroy();
+            } catch {
             }
-          } else {
-            reject('Error: ' + err)
           }
-        })
-    })
+        }
+      );
+    });
+    // return new Promise<CreateTranscriptionResponse>((resolve, reject) => {
+    //   let httpRequest = http.createHttp()
+    //   httpRequest.request(createTranscription,
+    //     {
+    //       method: http.RequestMethod.POST,
+    //       header: new HeaderForAudio(authToken, "multipart/form-data"),
+    //       extraData: JSON.stringify(payload),
+    //       readTimeout: 30000,
+    //       connectTimeout: 30000
+    //     },
+    //
+    //     (err: Error, data: http.HttpResponse) => {
+    //       if (!err) {
+    //         try {
+    //           Log.info('Transcription data', JSON.stringify(data, null, 2))
+    //           let responseData: CreateTranscriptionResponse = JSON.parse(data.result as string)
+    //           resolve(responseData)
+    //           Log.info('Transcription', JSON.stringify(responseData, null, 2))
+    //         } catch (error) {
+    //           reject('Failed to parse response data')
+    //         }
+    //         finally {
+    //           httpRequest.off('headersReceive')
+    //           httpRequest.destroy()
+    //         }
+    //       } else {
+    //         reject('Error: ' + err)
+    //       }
+    //     })
+    // })
   }
 
   private _mimeFromName(name: string): string {
     const low = name.toLowerCase();
-    if (low.endsWith('.wav')) return 'audio/wav';
-    if (low.endsWith('.mp3')) return 'audio/mpeg';
-    if (low.endsWith('.m4a')) return 'audio/mp4';
-    if (low.endsWith('.ogg')) return 'audio/ogg';
-    if (low.endsWith('.webm')) return 'audio/webm';
+    if (low.endsWith('.wav')) {
+      return 'audio/wav';
+    }
+    if (low.endsWith('.mp3')) {
+      return 'audio/mpeg';
+    }
+    if (low.endsWith('.m4a')) {
+      return 'audio/mp4';
+    }
+    if (low.endsWith('.ogg')) {
+      return 'audio/ogg';
+    }
+    if (low.endsWith('.webm')) {
+      return 'audio/webm';
+    }
     return 'application/octet-stream';
   }
 
@@ -302,10 +463,16 @@ class chatDataSource {
     parts.push(this._utf8(`\r\n--${boundary}--\r\n`));
 
     // 拼接
-    let total = 0; for (const p of parts) total += p.length;
+    let total = 0;
+    for (const p of parts) {
+      total += p.length;
+    }
     const body = new Uint8Array(total);
     let off = 0;
-    for (const p of parts) { body.set(p, off); off += p.length; }
+    for (const p of parts) {
+      body.set(p, off);
+      off += p.length;
+    }
     return body;
   }
 }
