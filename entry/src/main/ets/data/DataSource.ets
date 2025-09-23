@@ -3,7 +3,12 @@ import { BusinessError } from '@ohos.base';
 import { DataResponse, HeaderForModel, Model, Body, } from '../models/models';
 import { ChatResponse, HeaderForChat } from '../models/chat';
 import { CreateImageBodyParams, CreateImageResponse, EditImageBodyParams, HeaderForImage } from '../models/image';
-import { CreateTranscriptionParams, CreateTranscriptionResponse, HeaderForAudio } from '../models/audio';
+import {
+  CreateTranscriptionParams,
+  CreateTranscriptionResponse,
+  HeaderForAudio,
+  CreateTranslationParams
+} from '../models/audio';
 import { Log } from '../utils/Log';
 import fs from "@ohos.file.fs"
 
@@ -28,6 +33,8 @@ const createTranscription = BASE_URL + "/v1/audio/transcriptions"
 
 const contentType: string = 'application/json'
 
+const createTranslation = BASE_URL + "/v1/audio/translations"
+
 class GetFileBytesAndMetaResponse {
   fileName: string;
   mime: string;
@@ -47,6 +54,11 @@ interface MultipartFileField {
   mime: string;
   content: Uint8Array;
 };
+
+interface GeneratedTypeLiteralInterface_1 {
+  text?: string;
+  error?: BusinessError;
+}
 
 class chatDataSource {
   model?: string
@@ -350,38 +362,69 @@ class chatDataSource {
         }
       );
     });
-    // return new Promise<CreateTranscriptionResponse>((resolve, reject) => {
-    //   let httpRequest = http.createHttp()
-    //   httpRequest.request(createTranscription,
-    //     {
-    //       method: http.RequestMethod.POST,
-    //       header: new HeaderForAudio(authToken, "multipart/form-data"),
-    //       extraData: JSON.stringify(payload),
-    //       readTimeout: 30000,
-    //       connectTimeout: 30000
-    //     },
-    //
-    //     (err: Error, data: http.HttpResponse) => {
-    //       if (!err) {
-    //         try {
-    //           Log.info('Transcription data', JSON.stringify(data, null, 2))
-    //           let responseData: CreateTranscriptionResponse = JSON.parse(data.result as string)
-    //           resolve(responseData)
-    //           Log.info('Transcription', JSON.stringify(responseData, null, 2))
-    //         } catch (error) {
-    //           reject('Failed to parse response data')
-    //         }
-    //         finally {
-    //           httpRequest.off('headersReceive')
-    //           httpRequest.destroy()
-    //         }
-    //       } else {
-    //         reject('Error: ' + err)
-    //       }
-    //     })
-    // })
   }
 
+  async createTranslation(payload: CreateTranslationParams): Promise<string> {
+    // 1) 固定全量 URL（不要只传 /v1/...）
+    const TRANSLATE_URL = 'https://api.openai.com/v1/audio/translations';
+    const meta = this._getFileBytesAndMeta(payload.file);
+
+    // 2) whisper-1 才支持这个端点
+    const textPairs: Array<[string, string]> = [
+      ['model', 'whisper-1'],                          // ← 不要用 gpt-4o-transcribe
+    // ['prompt', 'optional...'],                    // 可选
+    // ['response_format', 'json' | 'text'],         // 默认 json
+    // ['temperature', '0']                          // 可选
+    ];
+
+    const boundary = '----ohosFormBoundary' + Math.random().toString(16).slice(2);
+    const body = this._buildMultipart(boundary, textPairs, {
+      fieldName: 'file',
+      filename: meta.fileName,                         // *.wav / *.mp3 / *.m4a
+      mime: meta.mime,                                 // audio/wav 等
+      content: meta.bytes
+    });
+
+    const httpRequest = http.createHttp();
+    return new Promise<string>((resolve, reject) => {
+      httpRequest.request(
+        TRANSLATE_URL,                                 // ← 确保就是这个完整 URL
+        {
+          method: http.RequestMethod.POST,
+          header: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Accept': 'application/json'
+          },
+          // ArkTS http 这里传 ArrayBuffer 即可
+          extraData: body.buffer,
+          expectDataType: http.HttpDataType.STRING,
+          readTimeout: 60000,
+          connectTimeout: 30000
+        },
+        (err: Error, res: http.HttpResponse) => {
+          try {
+            if (err) return reject(err);
+
+            const raw = (res.result ?? '') as string;
+            Log.info('[createTranslation] status=' + res.responseCode);
+            Log.info('[createTranslation] raw=' + raw);
+
+            // 返回形如 { text: "..." } 或 { error: {...} }
+            const obj = JSON.parse(raw) as GeneratedTypeLiteralInterface_1;
+            if (obj?.text) return resolve(obj.text);
+
+            return reject(new Error('Translation failed: ' + raw));
+          } catch (e) {
+            reject(e);
+          } finally {
+            try { httpRequest.off('headersReceive'); } catch {}
+            try { httpRequest.destroy(); } catch {}
+          }
+        }
+      );
+    });
+  }
   private _mimeFromName(name: string): string {
     const low = name.toLowerCase();
     if (low.endsWith('.wav')) {

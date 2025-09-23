@@ -44,6 +44,20 @@ class CreateTranscriptionResponse {
   }
 }
 
+
+class CreateTranslationParams {
+  file: file.File;
+  // 模型名称 gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
+  model: string;
+
+  constructor(file: file.File, model: string) {
+    this.file = file
+    this.model = model
+  }
+}
+
+
+
 class Usage {
   type: string
   input_tokens: number
@@ -66,4 +80,4 @@ class InputTokenDetails {
   }
 }
 
-export { HeaderForAudio, CreateTranscriptionParams, CreateTranscriptionResponse, FileForAudio }
+export { HeaderForAudio, CreateTranscriptionParams, CreateTranscriptionResponse, FileForAudio, CreateTranslationParams }

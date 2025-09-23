@@ -23,7 +23,7 @@ import Storage from '../preference/Storage'
 import { abilityAccessCtrl, bundleManager, common, Permissions } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { UIContext } from '@kit.ArkUI';
-import { CreateTranscriptionParams, CreateTranscriptionResponse } from '../models/audio';
+import { CreateTranscriptionParams, CreateTranscriptionResponse, CreateTranslationParams } from '../models/audio';
 import { AudioCapturer } from '../media/AudioCapturer';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
@@ -151,6 +151,65 @@ struct Index {
   private lastVoiceMs: number = 0;
   private hasSpeech: boolean = false;
   @State latestAssistantText: string = ''
+  @State lastTextEn: string = ''; // 翻译后的英文
+  @State translating: boolean = false; // 可选：UI想显示“Translating…”时用
+
+  private async translateCurrentAudioToEnglish(): Promise<string> {
+    if (!this.lastWavPath) {
+      return '';
+    }
+
+    let f: file.File | null = null;
+    try {
+      this.translating = true;
+      // 打开刚才录下的 wav
+      f = file.openSync(this.lastWavPath, file.OpenMode.READ_ONLY);
+
+      // 组装翻译参数（用你封装的翻译端点）
+      const params = new CreateTranslationParams(f, 'gpt-4o-mini-transcribe');
+
+      const source = new chatDataSource();
+      const textEn: string = await source.createTranslation(params); // 你封装的 createTranslation 返回 string
+
+      this.lastTextEn = textEn ?? '';
+      return this.lastTextEn;
+    } catch (e) {
+      Log.error('[WatchVoice] translate error: ' + JSON.stringify(e));
+      this.lastTextEn = '';
+      return '';
+    } finally {
+      this.translating = false;
+      try {
+        if (f) {
+          file.closeSync(f.fd);
+        }
+      } catch {
+      }
+    }
+  }
+
+  private async sendTranscriptToGPT(): Promise<void> {
+    if (!this.lastText || this.lastText.length === 0) {
+      this.status = 'No speech recognized';
+      return;
+    }
+
+    // ① 先把当前 wav 翻译成英文（失败则回退到中文）
+    let english = await this.translateCurrentAudioToEnglish();
+    if (!english || english.trim().length === 0) {
+      // 兜底：没翻译成功，就用原始文本
+      english = this.lastText;
+    }
+
+    // ② 用英文构造“用户消息”，并发送给 GPT
+    const userMsg = new Message('user', [new TextContent(english)]);
+    this.messages.push(userMsg);
+    this.messagesWithImage.push(new MessageTxtImg(userMsg, ''));
+
+    this.status = 'Getting reply…';
+    const body = new Body(this.selectedModel, this.messages);
+    this.callChatMethod(body);
+  }
 
   async aboutToAppear(): Promise<void> {
     this.checkPermission()
@@ -283,16 +342,20 @@ struct Index {
       }
     })
   }
+
   private hasTextField(seg: Content): boolean {
     const t = seg as TextContent;
     return t !== undefined && typeof t.text === 'string';
   }
 
-
   // 把 Content[] 或 string 提取为可展示的文本
   private extractTextFromContents(contents: Content[] | string | null | undefined): string {
-    if (!contents) return '';
-    if (typeof contents === 'string') return contents;
+    if (!contents) {
+      return '';
+    }
+    if (typeof contents === 'string') {
+      return contents;
+    }
 
     const parts: string[] = [];
     for (let i = 0; i < contents.length; i++) {
@@ -570,26 +633,26 @@ struct Index {
     }
   }
 
-  // ---- 把转写结果当作用户消息发给 GPT，并把回复插入列表显示 ----
-  private async sendTranscriptToGPT(): Promise<void> {
-    if (!this.lastText || this.lastText.length === 0) {
-      this.status = 'No speech recognized';
-      return;
-    }
-
-    // 1) 把“转写文本”作为一条用户消息加入对话（也加入 messagesWithImage 以便 UI 列表展示）
-    const userMsg = new Message('user', [new TextContent(this.lastText)]);
-    this.messages.push(userMsg);
-    // 第二个参数是图片占位，语音转文字这里没有图，传空串即可
-    this.messagesWithImage.push(new MessageTxtImg(userMsg, ''));
-
-    // 2) 调用你现有的聊天接口
-    this.status = 'Getting reply…';
-    const body = new Body(this.selectedModel, this.messages);
-
-    // 复用你已有的封装：它会把助手回复 push 进 this.messages & this.messagesWithImage
-    this.callChatMethod(body);
-  }
+  // // ---- 把转写结果当作用户消息发给 GPT，并把回复插入列表显示 ----
+  // private async sendTranscriptToGPT(): Promise<void> {
+  //   if (!this.lastText || this.lastText.length === 0) {
+  //     this.status = 'No speech recognized';
+  //     return;
+  //   }
+  //
+  //   // 1) 把“转写文本”作为一条用户消息加入对话（也加入 messagesWithImage 以便 UI 列表展示）
+  //   const userMsg = new Message('user', [new TextContent(this.lastText)]);
+  //   this.messages.push(userMsg);
+  //   // 第二个参数是图片占位，语音转文字这里没有图，传空串即可
+  //   this.messagesWithImage.push(new MessageTxtImg(userMsg, ''));
+  //
+  //   // 2) 调用你现有的聊天接口
+  //   this.status = 'Getting reply…';
+  //   const body = new Body(this.selectedModel, this.messages);
+  //
+  //   // 复用你已有的封装：它会把助手回复 push 进 this.messages & this.messagesWithImage
+  //   this.callChatMethod(body);
+  // }
 
   // builder
   @Builder
@@ -603,21 +666,25 @@ struct Index {
   private headerUserText(): string {
     return (this.lastText && this.lastText.length > 0)
       ? this.lastText
-      : (this.isRecording ? '正在聆听… 请说话' : '点击下方按钮开始说话');
+      : (this.isRecording ? 'Listening..' : 'Click button to start');
   }
 
   build() {
     Column() {
       // 顶部：用户语音
       Row() {
-        Text('我说：')
+        Text('You said:')
           .fontSize(12)
           .fontWeight(600)
           .fontColor('#89CFF0')
           .opacity(0.95)
           .margin({ right: 6 })
 
-        Text(this.headerUserText())   // 上面的方法
+        Text(
+          (this.lastTextEn && this.lastTextEn.length > 0)
+            ? this.lastTextEn
+            : (this.isRecording ? 'Listening…' : 'No English text yet')
+        )
           .fontSize(14)
           .fontWeight(600)
           .fontColor('#FFFFFF')
@@ -649,7 +716,7 @@ struct Index {
 
       // 中间：助手回复
       Column() {
-        Text('助手：')
+        Text('Response:')
           .fontSize(12)
           .fontWeight(600)
           .fontColor('#FFD580')
@@ -684,7 +751,7 @@ struct Index {
 
       // 底部：录音按钮 + 状态
       Column() {
-        Button(this.isRecording ? '正在聆听…' : '开始说话')
+        Button(this.isRecording ? 'Listening..' : 'Speak now')
           .width(88)   // ⬅ 缩小按钮
           .height(88)
           .fontSize(14)
