@@ -1,16 +1,5 @@
 import file from '@ohos.file.fs';
 
-// Image Generation
-class HeaderForAudio {
-  Authorization: string
-  ContentType: string
-
-  constructor(authToken: string, type: string) {
-    this.Authorization = `Bearer ${authToken}`;
-    this.ContentType = type
-  }
-}
-
 class FileForAudio {
   filePath: string
   fileModel: string = 'gpt-4o-transcribe'
@@ -21,7 +10,7 @@ class FileForAudio {
 
 class CreateTranscriptionParams {
   file: file.File;
-  // 模型名称 gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
+  // model choice: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
   model: string;
 
   constructor(file: file.File, model: string) {
@@ -47,7 +36,7 @@ class CreateTranscriptionResponse {
 
 class CreateTranslationParams {
   file: file.File;
-  // 模型名称 gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
+  // model choice: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1
   model: string;
 
   constructor(file: file.File, model: string) {
@@ -80,4 +69,4 @@ class InputTokenDetails {
   }
 }
 
-export { HeaderForAudio, CreateTranscriptionParams, CreateTranscriptionResponse, FileForAudio, CreateTranslationParams }
+export { CreateTranscriptionParams, CreateTranscriptionResponse, FileForAudio, CreateTranslationParams }

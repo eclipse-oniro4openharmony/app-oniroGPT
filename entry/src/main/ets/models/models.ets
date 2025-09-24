@@ -1,7 +1,7 @@
 class Model {
-  id: string // 模型 ID
-  object: string // 模型类型
-  owned_by: string // 所有者
+  id: string
+  object: string
+  owned_by: string
   created: Date
 
   constructor(id: string, object: string, owned_by: string, created: Date) {
@@ -12,10 +12,9 @@ class Model {
   }
 }
 
-// 数据响应类
 class DataResponse {
-  data: Model[] // 模型列表
-  object: string // 响应类型
+  data: Model[]
+  object: string
 
   constructor(data: Model[], object: string) {
     this.data = data
@@ -23,7 +22,6 @@ class DataResponse {
   }
 }
 
-// 定义请求头
 class HeaderForModel {
   Authorization: string
 

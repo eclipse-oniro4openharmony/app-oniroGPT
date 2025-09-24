@@ -14,4 +14,32 @@ export class Constants {
   static SAMPLE_BIT = 16;
   static SAMPLE_BYTE = Constants.SAMPLE_BIT / 8;
   static WAVE_RECORD_INDEX: number[] = new Array(Constants.WAVE_RECORDING_COUNT).fill(0);
+  // ---- VAD parameters ----
+  static VAD_SPEECH_RMS = 0.025;
+  static VAD_SILENCE_MS_AFTER_SPEECH = 1200;
+  // Longest recording time
+  static MAX_RECORD_MS = 15000;
+  // Silence time
+  static PRE_SPEECH_TIMEOUT_MS = 5000;
+
+  static SILENCE_AFTER_SPEECH = 'Silence after speech'
+  static PRE_SPEECH_TIMEOUT = 'Pre-speech timeout'
+  static MAX_DURATION = 'Max duration'
+  static MANUAL_STOP = 'Manual stop'
+  static LISTENING = 'Listening..'
+  static NO_UI = 'No UI context'
+  static FAILED_HTTP = 'Failed to fetch data: HTTP Code'
+  static GPT_4O_MINI = 'gpt-4o-mini'
+  static GPT_4O_MINI_TRANSCRIBE = 'gpt-4o-mini-transcribe'
+  static TAP_SPEAK = 'Tap Oniro to speak'
+  static NO_SPEAK ='No speech recognized';
+  static GET_READY = 'Get ready'
+  static BUNDLE_NAME = 'com.huawei.ohos.settings'
+  static AbilityName = 'com.huawei.ohos.settings.MainAbility'
+  static URI = "application_info_entry"
+  static ASSISTANT = 'assistant'
+  static PROCESSING = 'Processing...'
+  static DONE = 'Done'
+  static FAILED = 'Failed'
+  static GPT_4O_TRANSCRIBE = 'gpt-4o-transcribe'
 }
