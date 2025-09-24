@@ -1,0 +1,36 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "label"
+    },
+    {
+      "name": "appName",
+      "value": "oniroGPT"
+    },
+    {
+      "name": "permission_reason_readmedia",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_readimagevideo",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_writeimagevideo",
+      "value": ""
+    },
+    {
+      "name": "permission_reason_writemedia",
+      "value": ""
+    }
+  ]
+}
