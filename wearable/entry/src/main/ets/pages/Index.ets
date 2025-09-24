@@ -1,11 +1,5 @@
 import { chatDataSource } from '../data/DataSource'
-import {
-  Content,
-  Body,
-  Message,
-  TextContent,
-  MessageTxtImg
-} from '../models/models'
+import { Content, Body, Message, TextContent, MessageTxtImg } from '../models/models'
 import { ChatResponse, Choice } from '../models/chat'
 import { Log } from '../utils/Log'
 import file from '@ohos.file.fs'
@@ -49,8 +43,8 @@ struct Test {
   @State angle: number = 0
   private spinTimer: number = 0
   @State isRestart: boolean = false
-
   @State currentPhase: Phase = Phase.Idle
+
   async aboutToAppear(): Promise<void> {
     this.checkPermission()
 
@@ -111,7 +105,9 @@ struct Test {
   }
 
   private async translateCurrentAudioToEnglish(): Promise<string> {
-    if (!this.lastWavPath) return ''
+    if (!this.lastWavPath) {
+      return ''
+    }
 
     let f: file.File | null = null
     try {
@@ -133,10 +129,14 @@ struct Test {
       return ''
     } finally {
       this.translating = false
-      try { if (f) file.closeSync(f.fd) } catch {}
+      try {
+        if (f) {
+          file.closeSync(f.fd)
+        }
+      } catch {
+      }
     }
   }
-
 
   private hasTextField(seg: Content): boolean {
     const t = seg as TextContent
@@ -199,7 +199,9 @@ struct Test {
 
   private async autoStopAndTranscribe(reason: string): Promise<void> {
     Log.info(reason)
-    if (!this.isRecording) return
+    if (!this.isRecording) {
+      return
+    }
     this.isRecording = false
 
     try {
@@ -219,7 +221,9 @@ struct Test {
   }
 
   private async doTranscribe(): Promise<void> {
-    if (!this.lastWavPath) return
+    if (!this.lastWavPath) {
+      return
+    }
 
     let f: file.File | null = null
     try {
@@ -241,7 +245,9 @@ struct Test {
           this.currentPhase = Phase.Translating
 
           let en = await this.translateCurrentAudioToEnglish()
-          if (!en || en.trim().length === 0) en = this.lastText
+          if (!en || en.trim().length === 0) {
+            en = this.lastText
+          }
           this.lastTextEn = en
           this.translating = false
 
@@ -257,7 +263,12 @@ struct Test {
         this.currentPhase = Phase.Idle
       }
     } finally {
-      try { if (f) file.closeSync(f.fd) } catch {}
+      try {
+        if (f) {
+          file.closeSync(f.fd)
+        }
+      } catch {
+      }
     }
   }
 
@@ -309,7 +320,6 @@ struct Test {
     await this.recorder.createOn(this.fileBaseName, this.getUIContext())
   }
 
-
   build() {
     Stack({ alignContent: Alignment.Center }) {
 
@@ -329,6 +339,8 @@ struct Test {
             .fontSize(12)
             .fontColor(Color.Black)
             .textAlign(TextAlign.Center)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#700f0000')
             .margin({ top: 4 })
         }
         .width('100%')
@@ -341,57 +353,59 @@ struct Test {
         Text(
           (this.lastTextEn && this.lastTextEn.length > 0)
             ? this.lastTextEn
-            : 'Translating…'  // placeholder
+            : 'Recognizing…'  // placeholder
         )
-          .fontColor(Color.Black)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#700f0000')
+          .fontSize(15)
           .zIndex(1)
           .margin({ left: 12, right: 12 })
       }
 
-
       // ===== Phase.Responding =====
       if (this.currentPhase === Phase.Responding) {
-        Scroll() {
-          Column() {
-            Row() {
-              Text(this.lastTextEn)
-                .fontColor(Color.Black)
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.Center)
-            .margin(5)
-
-            Text(this.latestAssistantText)
-              .fontColor(Color.Black)
-              .fontSize(14)
-              .textAlign(TextAlign.Start)
+        Column() {
+          Scroll() {
+            Column() {
+              Row() {
+                Text(this.lastTextEn)
+                  .fontColor('#700f0000')
+                  .fontSize(14)
+                  .textAlign(TextAlign.Center)
+                  .fontWeight(FontWeight.Bold)
+              }
               .width('100%')
-              .lineHeight(20)
+              .justifyContent(FlexAlign.Center)
+              .margin({ bottom: 6 })
+
+              Text(this.latestAssistantText)
+                .fontColor('#8f0f0000')
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .textAlign(TextAlign.Start)
+                .lineHeight(20)
+                .width('100%')
+            }
           }
+          .width('100%')
+          .height('100%')
+          .scrollBar(BarState.On)
+          .edgeEffect(EdgeEffect.Spring)
+          .clip(true)
+
+          Image($r('app.media.icon_oniro'))
+            .width(40)
+            .height(40)
+            .onClick(() => this.startNewTurnAndRecord())
+            .margin({ bottom: 16 })
         }
-        .layoutWeight(1)
-        .scrollBar(BarState.On)
+        .justifyContent(FlexAlign.End)
+        .width('90%')
+        .height('70%')
         .padding(8)
         .backgroundColor($r('sys.color.comp_background_list_card'))
         .borderRadius(8)
         .zIndex(1)
-      }
-
-      if (this.currentPhase === Phase.Responding) {
-        Column() {
-          Image($r('app.media.icon_oniro'))
-            .width(40)
-            .height(40)
-            .zIndex(10)
-            .onClick(() => {
-              this.startNewTurnAndRecord()
-            })
-        }
-        .width('100%')
-        .height('100%')
-        .padding(20)
-        .justifyContent(FlexAlign.End)
-        .zIndex(2)
       }
 
       // BACKGROUND LAYER
@@ -400,5 +414,4 @@ struct Test {
     .width('100%')
     .height('100%')
   }
-
 }
