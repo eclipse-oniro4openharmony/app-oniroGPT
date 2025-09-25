@@ -20,8 +20,11 @@ import { MessageItem } from '../models/message';
 import { InputWindowDialog } from '../component/inputWindow'
 import { ReadyNewChatWindow } from '../component/readyWindow';
 import Storage from '../preference/Storage'
-import { abilityAccessCtrl, bundleManager, common } from '@kit.AbilityKit';
+import { abilityAccessCtrl, bundleManager, common, Permissions } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { AudioCapturer } from '../media/AudioCapturer';
+import { Constants } from '../common/Constants';
+import { CreateTranscriptionParams, CreateTranscriptionResponse, CreateTranslationParams } from '../models/audio';
 
 PersistentStorage.persistProp<MessageTxtImg[]>('currentMessages', [])
 PersistentStorage.persistProp<MessageItem[]>('allMessages', [])
@@ -32,6 +35,12 @@ class ImageType {
   constructor() {
     this.type = 'image/png'
   }
+}
+
+enum Phase {
+  Idle = 0,
+  Translating = 1,
+  Responding = 2
 }
 
 @Entry
@@ -127,8 +136,51 @@ struct Index {
   @State isBlack: boolean = false
   //Image generation
   @State isImageGenerateMode: boolean = false
-
+  @State isSpeakMode: boolean = false
+  //Voice management
+  @Prop icon?: Resource // 可选：自定义麦克风图标
+  @Prop textColor?: Resource // 可选：提示文字颜色
+  @Prop accentColor?: Resource // 可选：高亮颜色（Listening…）
+  // ===== 内部状态 =====
+  @State isRecording: boolean = false
+  @State status: string = 'Tap to speak'
+  @State fileBaseName: string = ''
+  @State lastWavPath: string = ''
+  @State translating: boolean = false
+  // 简单 VAD（可按需精简/保留）
+  private recordStartMs: number = 0
+  private lastVoiceMs: number = 0
+  private ctx: common.UIAbilityContext | undefined
+  private atManager: abilityAccessCtrl.AtManager | null = null
+  //Voice management
+  private recorder: AudioCapturer = new AudioCapturer()
+  @State lastText: string = ''
+  // ---- VAD parameters ----
+  private hasSpeech: boolean = false
+  @State latestAssistantText: string = ''
+  @State lastTextEn: string = ''
+  @State angle: number = 0
+  private spinTimer: number = 0
+  @State isRestart: boolean = false
+  @State currentPhase: Phase = Phase.Idle
+  private async ensureMicPermission(): Promise<void> {
+    if (!this.atManager || !this.ctx) return
+    const perms: Permissions[] = ['ohos.permission.MICROPHONE']
+    try {
+      await this.atManager.requestPermissionsFromUser(this.ctx, perms)
+    } catch (e) {
+      Log.error('[VoiceCapture] mic permission failed: ' + JSON.stringify(e))
+    }
+  }
   async aboutToAppear(): Promise<void> {
+    try {
+      this.ctx = this.getUIContext().getHostContext() as common.UIAbilityContext
+    } catch {
+      this.ctx = undefined
+    }
+    this.atManager = abilityAccessCtrl.createAtManager()
+    this.ensureMicPermission()
+
     let temp: string[] = (await this.localStorage.getStyle('style')) as string[]
 
     if (this.messagesWithImage[0]) {
@@ -173,38 +225,252 @@ struct Index {
     }
   }
 
-  async fetchModels() {
+  callChatMethod(payload: Body) {
+    const source = new chatDataSource()
 
+    source.fetchHttpCode().then(async (code) => {
+      this.httpCode = code
+
+      if (code === 200) {
+
+        const reply: ChatResponse = await source.callChatApi(payload).catch(
+          (err: BusinessError) => {
+            console.error('Error during callChatApi:', err)
+          }
+        ) as ChatResponse
+        if (reply && reply.choices) {
+          this.repliedChoices = reply.choices
+          this.repliedChoices.forEach((item: Choice) => {
+            // Save current response content
+            this.latestAssistantText = this.extractTextFromContents(this.currentContent)
+            this.currentPhase = Phase.Responding
+            this.currentContent = item.message?.content || []
+            this.messages.push(new Message(Constants.ASSISTANT, this.currentContent))
+            this.messagesWithImage.push(new MessageTxtImg((new Message(Constants.ASSISTANT, this.currentContent)), ''))
+          })
+        }
+      } else {
+        this.isHttpError = true
+        console.error(Constants.FAILED_HTTP, code)
+      }
+    })
   }
 
-  // 检查权限方法
-  async checkPermission() {
-    try {
-      const manager = abilityAccessCtrl.createAtManager() // 创建程序控制管理器
-      // 获取应用信息
-      const buildInfo =
-        bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION)
-      // 获取该应用是否有录音权限
-      const status = manager.checkAccessTokenSync(buildInfo.appInfo?.accessTokenId, "ohos.permission.MICROPHONE")
-      if (status === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED) {
-        // 没有权限，跳转应用设置
-        const context = this.getUIContext().getHostContext() as common.UIAbilityContext
-        context.startAbility({
-          bundleName: 'com.huawei.ohos.settings',
-          abilityName: 'com.huawei.ohos.settings.MainAbility',
-          uri: "application_info_entry",
-          parameters: {
-            pushParams: buildInfo.name
-          }
-        })
-      } else {
-        // 有权限,可以开始录音
+  private async translateCurrentAudioToEnglish(): Promise<string> {
+    if (!this.lastWavPath) {
+      return ''
+    }
 
+    let f: file.File | null = null
+    try {
+      this.translating = true
+      if (canIUse('SystemCapability.FileManagement.File.FileIO')) {
+        f = file.openSync(this.lastWavPath, file.OpenMode.READ_ONLY)
+        const params = new CreateTranslationParams(f, Constants.GPT_4O_MINI_TRANSCRIBE)
+        const source = new chatDataSource()
+        const textEn: string = await source.createTranslation(params)
+        this.lastTextEn = textEn ?? ''
+        return this.lastTextEn
+      } else {
+        Log.error("Current device can not use file management")
+        return ''
       }
-    } catch (error) {
+    } catch (e) {
+      Log.error('[WatchVoice] translate error: ' + JSON.stringify(e))
+      this.lastTextEn = ''
+      return ''
+    } finally {
+      this.translating = false
+      try {
+        if (f) {
+          file.closeSync(f.fd)
+        }
+      } catch {
+      }
     }
   }
 
+  private hasTextField(seg: Content): boolean {
+    const t = seg as TextContent
+    return t !== undefined && typeof t.text === 'string'
+  }
+
+  private extractTextFromContents(contents: Content[] | string | null | undefined): string {
+    if (!contents) {
+      return ''
+    }
+    if (typeof contents === 'string') {
+      return contents
+    }
+
+    const parts: string[] = []
+    for (let i = 0; i < contents.length; i++) {
+      const seg = contents[i]
+      if (this.hasTextField(seg)) {
+        const t = seg as TextContent
+        parts.push(t.text)
+      }
+    }
+    return parts.join('\n').trim()
+  }
+
+  private onAudioChunk(buffer: ArrayBuffer): void {
+    const samples = new Int16Array(buffer)
+    if (samples.length === 0) {
+      return
+    }
+    let sum = 0
+    for (let i = 0; i < samples.length; i++) {
+      const v = samples[i] / 32768 // 16bit
+      sum += v * v
+    }
+    const rms = Math.sqrt(sum / samples.length)
+
+    const now = Date.now()
+
+    if (rms >= Constants.VAD_SPEECH_RMS) {
+      this.hasSpeech = true
+      this.lastVoiceMs = now
+    }
+
+    if (now - this.recordStartMs >= Constants.MAX_RECORD_MS) {
+      Promise.resolve().then(() => this.autoStopAndTranscribe(Constants.MAX_DURATION))
+      return
+    }
+
+    if (!this.hasSpeech && now - this.recordStartMs >= Constants.PRE_SPEECH_TIMEOUT_MS) {
+      Promise.resolve().then(() => this.autoStopAndTranscribe(Constants.PRE_SPEECH_TIMEOUT))
+      return
+    }
+
+    if (this.hasSpeech && now - this.lastVoiceMs >= Constants.VAD_SILENCE_MS_AFTER_SPEECH) {
+      Promise.resolve().then(() => this.autoStopAndTranscribe(Constants.SILENCE_AFTER_SPEECH))
+      return
+    }
+  }
+
+  private async autoStopAndTranscribe(reason: string): Promise<void> {
+    Log.info(reason)
+    if (!this.isRecording) {
+      return
+    }
+    this.isRecording = false
+
+    try {
+      this.recorder.clearDataCallback?.()
+      await this.recorder.stopAndRelease()
+
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext
+      this.lastWavPath = `${ctx.cacheDir}/${this.fileBaseName}.wav`
+      this.status = Constants.PROCESSING
+      this.currentPhase = Phase.Idle
+
+      await this.doTranscribe()
+    } catch (e) {
+      this.status = Constants.FAILED
+      this.currentPhase = Phase.Idle
+    }
+  }
+
+  private async doTranscribe(): Promise<void> {
+    if (!this.lastWavPath) {
+      return
+    }
+
+    let f: file.File | null = null
+    try {
+      if (canIUse('SystemCapability.FileManagement.File.FileIO')) {
+        f = file.openSync(this.lastWavPath, file.OpenMode.READ_ONLY)
+        const payload = new CreateTranscriptionParams(f, Constants.GPT_4O_TRANSCRIBE)
+
+        const source = new chatDataSource()
+        const reply = await source.createTranscriptions(payload)
+          .catch((err: BusinessError) => {
+            Log.error('[Voice] transcription http error: ' + JSON.stringify(err))
+          }) as CreateTranscriptionResponse
+
+        if (reply && typeof reply.text === 'string' && reply.text.length > 0) {
+          this.lastText = reply.text
+
+          this.status = Constants.GET_READY
+          this.translating = true
+          this.currentPhase = Phase.Translating
+
+          let en = await this.translateCurrentAudioToEnglish()
+          if (!en || en.trim().length === 0) {
+            en = this.lastText
+          }
+          this.lastTextEn = en
+          this.translating = false
+
+          await this.sendTranscriptToGPT()
+        } else {
+          this.lastText = ''
+          this.status = Constants.FAILED
+          this.currentPhase = Phase.Idle
+        }
+
+      } else {
+        Log.error('Current device not support file management')
+        this.currentPhase = Phase.Idle
+      }
+    } finally {
+      try {
+        if (f) {
+          file.closeSync(f.fd)
+        }
+      } catch {
+      }
+    }
+  }
+
+  private async sendTranscriptToGPT(): Promise<void> {
+    if (!this.lastTextEn || this.lastTextEn.trim().length === 0) {
+      this.status = Constants.PROCESSING
+      return
+    }
+    const userMsg = new Message('user', [new TextContent(this.lastTextEn)])
+    this.messages.push(userMsg)
+    this.messagesWithImage.push(new MessageTxtImg(userMsg, ''))
+    this.isSpeakMode = false;
+    this.status = Constants.GET_READY
+    const body = new Body(this.selectedModel, this.messages)
+    this.callChatMethod(body)
+  }
+
+  private startSpin() {
+    if (this.spinTimer) {
+      return
+    }
+    this.spinTimer = setInterval(() => {
+      this.angle = (this.angle + 6) % 360
+    }, 16) as number
+  }
+
+  private async startNewTurnAndRecord(): Promise<void> {
+    this.lastText = ''
+    this.lastTextEn = ''
+    this.latestAssistantText = ''
+    this.angle = 0
+
+    this.status = Constants.LISTENING
+    this.isRecording = true
+    this.currentPhase = Phase.Idle
+
+    this.fileBaseName = Date.now().toString()
+    this.lastWavPath = ''
+    this.recordStartMs = Date.now()
+    this.lastVoiceMs = this.recordStartMs
+    this.hasSpeech = false
+
+    this.startSpin?.()
+
+    this.recorder.setDataCallback((buffer: ArrayBuffer) => {
+      this.onAudioChunk(buffer)
+    })
+
+    await this.recorder.createOn(this.fileBaseName, this.getUIContext())
+  }
   async handleClick(option: MediaOption) {
     let mediaBean!: MediaBean;
     switch (option) {
@@ -223,40 +489,6 @@ struct Index {
     if (mediaBean) {
       this.mediaBean = mediaBean;
     }
-  }
-
-  callChatMethod(payload: Body) {
-    const source = new chatDataSource()
-
-    source.fetchHttpCode().then(async (code) => {
-      this.httpCode = code
-      Log.info('callChatResponse', 'inside call Chat')
-
-      if (code === 200) {
-        Log.info('callChatResponse', 'inside 200 call Chat')
-
-        const reply: ChatResponse = await source.callChatApi(payload).catch(
-          (err: BusinessError) => {
-            console.error('Error during callChatApi:', err)
-          }
-        ) as ChatResponse
-        Log.info('callChatResponse', JSON.stringify(reply, null, 2))
-        if (reply && reply.choices) {
-          this.repliedChoices = reply.choices;
-          this.repliedChoices.forEach((item: Choice) => {
-            console.info(item.message?.role || 'No role information');
-            // console.info(item.message?.content || 'No message content');
-
-            this.currentContent = item.message?.content || []
-            this.messages.push(new Message('assistant', this.currentContent))
-            this.messagesWithImage.push(new MessageTxtImg((new Message('assistant', this.currentContent)), ''))
-          })
-        }
-      } else {
-        this.isHttpError = true;
-        console.error('Failed to fetch data: HTTP Code', code);
-      }
-    })
   }
 
   callCreateImage(payload: CreateImageBodyParams) {
@@ -502,57 +734,143 @@ struct Index {
                     })
                   }
                 } else {
-                  List() {
-                    ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
-                      ListItem() {
-                        Row({ space: 20 }) {
-                          if (item.message.role == 'user') {
+                  if (this.isSpeakMode) {
+                    Stack({ alignContent: Alignment.Center }) {
+
+                      // ===== Phase.Idle =====
+                      if (this.currentPhase === Phase.Idle) {
+                        Column() {
+                          Image($r('app.media.icon_oniro'))
+                            .objectFit(ImageFit.Fill)
+                            .width(100)
+                            .height(100)
+                            .borderRadius(44)
+                            .rotate({ angle: this.angle })
+                            .onClick(() => this.startNewTurnAndRecord())
+
+                          // Status: TAP_SPEAK / LISTENING / PROCESSING
+                          Text(this.status)
+                            .fontSize(12)
+                            .fontColor(Color.Black)
+                            .textAlign(TextAlign.Center)
+                            .fontWeight(FontWeight.Bold)
+                            .fontColor('#700f0000')
+                            .margin({ top: 4 })
+                        }
+                        .width('100%')
+                        .alignItems(HorizontalAlign.Center)
+                        .zIndex(1)
+                      }
+
+                      // ===== Phase.Translating: Display user input text only =====
+                      if (this.currentPhase === Phase.Translating) {
+                        Text(
+                          (this.lastTextEn && this.lastTextEn.length > 0)
+                            ? this.lastTextEn
+                            : 'Recognizing…'  // placeholder
+                        )
+                          .fontWeight(FontWeight.Bold)
+                          .fontColor('#700f0000')
+                          .fontSize(15)
+                          .zIndex(1)
+                          .margin({ left: 12, right: 12 })
+                      }
+
+                      // ===== Phase.Responding =====
+                      if (this.currentPhase === Phase.Responding) {
+                        Column() {
+                          Scroll() {
                             Column() {
                               Row() {
-                                Image(item.img)
-                                  .width(200)
+                                Text(this.lastTextEn)
+                                  .fontColor('#700f0000')
+                                  .fontSize(14)
+                                  .textAlign(TextAlign.Center)
+                                  .fontWeight(FontWeight.Bold)
                               }
+                              .width('100%')
+                              .justifyContent(FlexAlign.Center)
+                              .margin({ bottom: 6 })
 
+                              Text(this.latestAssistantText)
+                                .fontColor('#8f0f0000')
+                                .fontSize(15)
+                                .fontWeight(FontWeight.Medium)
+                                .textAlign(TextAlign.Start)
+                                .lineHeight(20)
+                                .width('100%')
+                            }
+                          }
+                          .width('100%')
+                          .height('100%')
+                          .scrollBar(BarState.On)
+                          .edgeEffect(EdgeEffect.Spring)
+                          .clip(true)
+                        }
+                        .justifyContent(FlexAlign.End)
+                        .width('90%')
+                        .height('70%')
+                        .padding(8)
+                        .backgroundColor($r('sys.color.comp_background_list_card'))
+                        .borderRadius(8)
+                        .zIndex(1)
+                      }
+
+                      // BACKGROUND LAYER
+                      Column().width('100%').height('100%').backgroundColor(Color.White).zIndex(0)
+                    }
+                    .width('100%')
+                    .height('100%')
+                  } else {
+                    List() {
+                      ForEach(this.messagesWithImage, (item: MessageTxtImg) => {
+                        ListItem() {
+                          Row({ space: 20 }) {
+                            if (item.message.role == 'user') {
+                              Column() {
+                                Row() {
+                                  Image(item.img)
+                                    .width(200)
+                                }
+
+                                Row() {
+                                  Row() {
+                                    if ((item.message.content[0] as TextContent).text !== '') {
+                                      Text((item.message.content[0] as TextContent).text)
+                                        .margin(10)
+                                        .fontColor(this.txtColor)
+                                    }
+                                  }
+                                  .borderRadius(10)
+                                  .borderWidth(1)
+                                  .borderColor(this.txtColor)
+                                  .margin(10)
+                                }
+                                .width('100%')
+                                .justifyContent(FlexAlign.End)
+                              }
+                              .width('100%')
+                            } else if (item.message.role == 'assistant') {
                               Row() {
                                 Row() {
-                                  if ((item.message.content[0] as TextContent).text !== '') {
-                                    Text((item.message.content[0] as TextContent).text)
-                                      .margin(10)
-                                      .fontColor(this.txtColor)
-                                  }
+                                  Text((item.message.content.toString()))
+                                    .margin(10)
                                 }
                                 .borderRadius(10)
                                 .borderWidth(1)
-                                .borderColor(this.txtColor)
                                 .margin(10)
+                                .backgroundColor(Color.Orange)
                               }
                               .width('100%')
-                              .justifyContent(FlexAlign.End)
+                              .justifyContent(FlexAlign.Start)
                             }
-                            .width('100%')
-                          } else if (item.message.role == 'assistant') {
-                            Row() {
-                              Row() {
-                                Text((item.message.content.toString()))
-                                  .margin(10)
-                              }
-                              .borderRadius(10)
-                              .borderWidth(1)
-                              .margin(10)
-                              .backgroundColor(Color.Orange)
-                            }
-                            .width('100%')
-                            .justifyContent(FlexAlign.Start)
                           }
+                          .width('100%')
                         }
-                        .width('100%')
-                      }
-                    })
-
+                      })
+                    }
                   }
-
                 }
-
               }
             }
           }.width('100%')
@@ -615,7 +933,6 @@ struct Index {
                 .borderRadius(3)
                 .onClick(() => {
                   this.isCurrentSelectedImageSent = true
-                  // 每次发消息的时候都会push一个image到upload列表, 有image的话就有数据
                   if (this.isImageIconClick) {
                     this.createImageBody.prompt = this.imageGenerateDescription
                     this.startImageGenerateEffect()
@@ -682,9 +999,10 @@ struct Index {
                   this.urlToFile(this.mediaBean.localUrl)
                 }
               })
-              // this.iconComponent($r("app.media.icon_record"), () => {
-              //   // todo: To be developed
-              // })
+              this.iconComponent($r("app.media.icon_record"), () => {
+                this.isSpeakMode = true
+                this.startNewTurnAndRecord()
+              })
 
               // Text(`Image:${this.isCreateImageLoading}`)
               if (!this.isCurrentSelectedImageSent) {

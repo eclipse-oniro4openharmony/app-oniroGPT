@@ -47,7 +47,6 @@ struct Test {
 
   async aboutToAppear(): Promise<void> {
     this.checkPermission()
-
   }
 
   async checkPermission() {
@@ -87,8 +86,6 @@ struct Test {
         if (reply && reply.choices) {
           this.repliedChoices = reply.choices
           this.repliedChoices.forEach((item: Choice) => {
-            this.currentContent = item.message?.content || []
-
             // Save current response content
             this.latestAssistantText = this.extractTextFromContents(this.currentContent)
             this.currentPhase = Phase.Responding

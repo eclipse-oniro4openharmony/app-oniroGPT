@@ -30,19 +30,6 @@ const contentType: string = 'application/json'
 
 const createTranslation = BASE_URL + "/v1/audio/translations"
 
-class GetFileBytesAndMetaResponse {
-  fileName: string;
-  mime: string;
-  bytes: Uint8Array;
-
-  constructor(fileName: string, mime: string, bytes: Uint8Array) {
-    this.fileName = fileName
-    this.mime = mime
-    this.bytes = bytes
-  }
-}
-;
-
 interface MultipartFileField {
   fieldName: 'file';
   filename: string;
@@ -53,6 +40,18 @@ interface MultipartFileField {
 interface GeneratedTypeLiteralInterface_1 {
   text?: string;
   error?: BusinessError;
+}
+
+class GetFileBytesAndMetaResponse {
+  fileName: string;
+  mime: string;
+  bytes: Uint8Array;
+
+  constructor(fileName: string, mime: string, bytes: Uint8Array) {
+    this.fileName = fileName
+    this.mime = mime
+    this.bytes = bytes
+  }
 }
 
 class chatDataSource {
