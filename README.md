@@ -1,11 +1,11 @@
 ## App-OniroGPT
 
-For mobile version **OniroGPT** guides, please refer to this [link](/wearable/README.md).
+For wearable version **OniroGPT** guides, please refer to this [documentation](/wearable/README.md).
 
 **Notice**: In order to use the application, user have to get a valid token to access.
 Your can get the token from [here](https://platform.openai.com/docs/overview)  
-After you get the token, go to entry/src/main/data/DataSource.ets, replace code
-const authToken = "your token" with your token.
+After you get the token, go to ```entry/src/main/data/DataSource.ets```, replace code
+```const authToken = "your token"``` with your token.
 
 
 #### Table of Content
@@ -28,6 +28,7 @@ const authToken = "your token" with your token.
 ![Alt text](images/screenshot_6.jpeg)  
 ![Alt text](images/screenshot_7.jpeg)  
 ![Alt text](images/screenshot_8.jpeg)  
+![Alt text](images/screenshot_9.jpeg)  
 
 #### Api with Header and Auth
 Some application's api requires authenication, thus the api request format is a bit different than before.
@@ -391,4 +392,5 @@ With valid image file path, we can convert the image into *PixelMap*, then use P
 
 ### References
 
-ARkTs takes the ArrayBuffer stream of a file and converts it to a Uint8Array stream.[https://blog.csdn.net/zhaools/article/details/142600845]
+- [ARkTs takes the ArrayBuffer stream of a file and converts it to a Uint8Array stream.](https://blog.csdn.net/zhaools/article/details/142600845)
+- [Using AudioCapturer for Audio Recording](https://developer.huawei.com/consumer/en/doc/harmonyos-guides-V14/using-audiocapturer-for-recording-V14)

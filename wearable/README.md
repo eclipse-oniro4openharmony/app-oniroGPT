@@ -40,8 +40,8 @@ UI effects are as follows:
 
 **Notice**: In order to use the application, user have to get a valid token to access.
 Your can get the token from [here](https://platform.openai.com/docs/overview)  
-After you get the token, go to entry/src/main/data/DataSource.ets, replace code
-const authToken = "your token" with your token.
+After you get the token, go to ```entry/src/main/data/DataSource.ets```, replace code
+```const authToken = "your token"``` with your token.
  
 ## Features
 
