@@ -21,7 +21,7 @@ jobs:
 
       - name: Build and sign app
         run: |
-          cd "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE/mobile"
           onirobuilder sign
           onirobuilder build
 
@@ -29,4 +29,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HAP packages
-          path: entry/build/default/outputs/default
+          path: mobile/entry/build/default/outputs/default
