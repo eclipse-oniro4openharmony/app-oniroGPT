@@ -1,6 +1,6 @@
 ## App-OniroGPT
 
-For wearable version **OniroGPT** guides, please refer to this [documentation](/wearable/README.md).
+For wearable version of **OniroGPT** guides, please refer to this [documentation](/wearable/README.md).
 
 **Notice**: In order to use the application, user have to get a valid token to access.
 Your can get the token from [here](https://platform.openai.com/docs/overview)  
