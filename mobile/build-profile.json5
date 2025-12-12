@@ -1,37 +1,31 @@
 {
-  "app": {
-    "signingConfigs": [
-    ],
-    "products": [
-      {
-        "name": "default",
-        "signingConfig": "default",
-        "compileSdkVersion": 20,
-        "compatibleSdkVersion": 20,
-        "runtimeOS": "OpenHarmony"
-      }
-    ],
-    "buildModeSet": [
-      {
-        "name": "debug",
-      },
-      {
-        "name": "release"
-      }
-    ]
+  "apiType": "stageMode",
+  "buildOption": {
+    "arkOptions": {
+      // "apPath": "./modules.ap"  /* Profile used for profile-guided optimization (PGO), a compiler optimization technique to improve app runtime performance. */
+    }
   },
-  "modules": [
+  "buildOptionSet": [
     {
-      "name": "entry",
-      "srcPath": "./entry",
-      "targets": [
-        {
-          "name": "default",
-          "applyToProducts": [
-            "default"
-          ]
+      "name": "release",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": true,
+            "files": [
+              "./obfuscation-rules.txt"
+            ]
+          }
         }
-      ]
+      }
+    },
+  ],
+  "targets": [
+    {
+      "name": "default"
+    },
+    {
+      "name": "ohosTest",
     }
   ]
 }

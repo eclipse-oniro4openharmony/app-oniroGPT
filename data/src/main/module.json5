@@ -1,0 +1,13 @@
+{
+  "module": {
+    "name": "data",
+    "type": "shared",
+    "description": "$string:shared_desc",
+    "deviceTypes": [
+      "phone",
+      "wearable"
+    ],
+    "deliveryWithInstall": true,
+    "pages": "$profile:main_pages"
+  }
+}
