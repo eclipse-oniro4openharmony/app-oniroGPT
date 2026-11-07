@@ -25,36 +25,6 @@
         }
       },
       {
-        "name": "ohos.permission.READ_IMAGEVIDEO",
-        "reason": "$string:permission_reason_readimagevideo",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        }
-      },
-      {
-        "name": "ohos.permission.WRITE_IMAGEVIDEO",
-        "reason": "$string:permission_reason_writeimagevideo",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        }
-      },
-      {
-        "name": "ohos.permission.WRITE_MEDIA",
-        "reason": "$string:permission_reason_writemedia",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        }
-      },
-      {
         "name": 'ohos.permission.MICROPHONE',
         "reason": '$string:EntryAbility_desc',
         "usedScene": {
